@@ -423,21 +423,20 @@ app.get('/api/chatgpt/metrics', async (req, res) => {
     
     console.log(`Metrics requested: ${accountId}, period: ${validPeriod}`);
     
-    const metricsQuery = `
-      SELECT 
-        campaign.name,
-        campaign.status,
-        metrics.clicks,
-        metrics.impressions, 
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.ctr,
-        metrics.average_cpc,
-        metrics.conversion_rate
-      FROM campaign 
-      WHERE segments.date DURING ${validPeriod}
-      ORDER BY metrics.cost_micros DESC
-    `;
+  const metricsQuery = `
+  SELECT 
+    campaign.name,
+    campaign.status,
+    metrics.clicks,
+    metrics.impressions, 
+    metrics.cost_micros,
+    metrics.conversions,
+    metrics.ctr,
+    metrics.average_cpc
+  FROM campaign 
+  WHERE segments.date DURING ${validPeriod}
+  ORDER BY metrics.cost_micros DESC
+`;
     
     const result = await executeGAQLQuery(metricsQuery, accountId);
     
@@ -454,7 +453,7 @@ app.get('/api/chatgpt/metrics', async (req, res) => {
       conversions: row.metrics?.conversions || 0,
       ctr: `${((row.metrics?.ctr || 0) * 100).toFixed(2)}%`,
       cpc: `$${((row.metrics?.average_cpc || 0) / 1000000).toFixed(2)}`,
-      conversionRate: `${((row.metrics?.conversion_rate || 0) * 100).toFixed(2)}%`
+      conversionRate: `${((row.metrics?.clicks || 0) > 0 ? ((row.metrics?.conversions || 0) / (row.metrics?.clicks || 0) * 100).toFixed(2) : '0.00')}%`
     }));
     
     res.json({
