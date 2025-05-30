@@ -9,7 +9,7 @@ dotenv.config();
 
 // Create the server
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 // Set up Google Ads client
 const client = new GoogleAdsApi({
@@ -62,8 +62,8 @@ async function executeGAQLQuery(query, customerId) {
     };
     
   } catch (error) {
-console.error(`Query failed for customer ${customerId}:`, error);
-console.error('Full error object:', JSON.stringify(error, null, 2));
+    console.error(`Query failed for customer ${customerId}:`, error);
+    console.error('Full error object:', JSON.stringify(error, null, 2));
     return {
       success: false,
       error: error.message,
@@ -397,7 +397,8 @@ app.get('/api/chatgpt/account/:accountId', async (req, res) => {
         spend: `$${((campaign.metrics?.cost_micros || 0) / 1000000).toFixed(2)}`,
         conversions: campaign.metrics?.conversions || 0,
         ctr: `${((campaign.metrics?.ctr || 0) * 100).toFixed(2)}%`,
-        cpc: `$${((campaign.metrics?.average_cpc || 0) / 1000000).toFixed(2)}`
+        cpc: `$${((campaign.metrics?.average_cpc || 0) / 1000000).toFixed(2)}`,
+        conversionRate: `${((campaign.metrics?.clicks || 0) > 0 ? ((campaign.metrics?.conversions || 0) / (campaign.metrics?.clicks || 0) * 100).toFixed(2) : '0.00')}%`
       }))
     };
     
@@ -423,20 +424,20 @@ app.get('/api/chatgpt/metrics', async (req, res) => {
     
     console.log(`Metrics requested: ${accountId}, period: ${validPeriod}`);
     
-  const metricsQuery = `
-  SELECT 
-    campaign.name,
-    campaign.status,
-    metrics.clicks,
-    metrics.impressions, 
-    metrics.cost_micros,
-    metrics.conversions,
-    metrics.ctr,
-    metrics.average_cpc
-  FROM campaign 
-  WHERE segments.date DURING ${validPeriod}
-  ORDER BY metrics.cost_micros DESC
-`;
+    const metricsQuery = `
+      SELECT 
+        campaign.name,
+        campaign.status,
+        metrics.clicks,
+        metrics.impressions, 
+        metrics.cost_micros,
+        metrics.conversions,
+        metrics.ctr,
+        metrics.average_cpc
+      FROM campaign 
+      WHERE segments.date DURING ${validPeriod}
+      ORDER BY metrics.cost_micros DESC
+    `;
     
     const result = await executeGAQLQuery(metricsQuery, accountId);
     
@@ -813,7 +814,7 @@ app.get('/api/chatgpt/search-terms/:accountId', async (req, res) => {
   }
 });
 
-// 7. Ad copy performance analysis
+// 7. Ad copy performance analysis (FIXED)
 app.get('/api/chatgpt/ad-copy-analysis/:accountId', async (req, res) => {
   try {
     const { accountId } = req.params;
@@ -836,8 +837,7 @@ app.get('/api/chatgpt/ad-copy-analysis/:accountId', async (req, res) => {
         metrics.impressions,
         metrics.cost_micros,
         metrics.conversions,
-        metrics.ctr,
-        metrics.conversion_rate
+        metrics.ctr
       FROM ad_group_ad 
       WHERE segments.date DURING ${validPeriod}
         AND ad_group_ad.status = 'ENABLED'
@@ -873,6 +873,9 @@ app.get('/api/chatgpt/ad-copy-analysis/:accountId', async (req, res) => {
         descriptions = (ad.ad_group_ad.ad.responsive_search_ad.descriptions || []).map(d => d.text).slice(0, 2);
       }
       
+      // Calculate conversion rate manually
+      const conversionRate = clicks > 0 ? (conversions / clicks * 100) : 0;
+      
       return {
         campaign: ad.campaign?.name,
         adGroup: ad.ad_group?.name,
@@ -884,7 +887,7 @@ app.get('/api/chatgpt/ad-copy-analysis/:accountId', async (req, res) => {
           conversions: conversions,
           spend: `$${spend.toFixed(2)}`,
           ctr: `${((ad.metrics?.ctr || 0) * 100).toFixed(2)}%`,
-          conversionRate: `${((ad.metrics?.conversion_rate || 0) * 100).toFixed(2)}%`,
+          conversionRate: `${conversionRate.toFixed(2)}%`,
           costPerConversion: conversions > 0 ? `$${(spend / conversions).toFixed(2)}` : 'N/A'
         }
       };
