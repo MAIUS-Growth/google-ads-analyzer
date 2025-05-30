@@ -62,7 +62,8 @@ async function executeGAQLQuery(query, customerId) {
     };
     
   } catch (error) {
-    console.error(`Query failed for customer ${customerId}:`, error.message);
+console.error(`Query failed for customer ${customerId}:`, error);
+console.error('Full error object:', JSON.stringify(error, null, 2));
     return {
       success: false,
       error: error.message,
