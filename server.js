@@ -624,25 +624,25 @@ app.get('/api/chatgpt/keyword-analysis/:accountId', async (req, res) => {
     
     console.log(`Keyword analysis requested: ${accountId}, period: ${validPeriod}`);
     
-    const keywordQuery = `
-      SELECT 
-        ad_group_criterion.keyword.text,
-        ad_group_criterion.keyword.match_type,
-        campaign.name,
-        ad_group.name,
-        metrics.clicks,
-        metrics.impressions,
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.ctr,
-        metrics.search_impression_share,
-        metrics.quality_score
-      FROM keyword_view 
+ const keywordQuery = `
+  SELECT 
+    ad_group_criterion.keyword.text,
+    ad_group_criterion.keyword.match_type,
+    campaign.name,
+    ad_group.name,
+    metrics.clicks,
+    metrics.impressions,
+    metrics.cost_micros,
+    metrics.conversions,
+    metrics.ctr,
+    metrics.search_impression_share,
+    ad_group_criterion.quality_info.quality_score
+  FROM keyword_view
       WHERE segments.date DURING ${validPeriod}
         AND ad_group_criterion.status = 'ENABLED'
         AND metrics.impressions > 0
       ORDER BY metrics.cost_micros DESC
-      LIMIT 200
+      LIMIT 300
     `;
     
     const result = await executeGAQLQuery(keywordQuery, accountId);
@@ -662,7 +662,7 @@ app.get('/api/chatgpt/keyword-analysis/:accountId', async (req, res) => {
       impressions: kw.metrics?.impressions || 0,
       ctr: (kw.metrics?.ctr || 0) * 100,
       impressionShare: (kw.metrics?.search_impression_share || 0) * 100,
-      qualityScore: kw.metrics?.quality_score || 0,
+      qualityScore: kw.ad_group_criterion?.quality_info?.quality_score || 0,
       conversionRate: (kw.metrics?.clicks || 0) > 0 ? (kw.metrics?.conversions || 0) / (kw.metrics?.clicks || 0) * 100 : 0
     }));
     
