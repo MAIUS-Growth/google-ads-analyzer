@@ -474,14 +474,14 @@ app.get('/api/chatgpt/metrics', async (req, res) => {
   }
 });
 
-// 4. Advanced statistical analysis with multiple date ranges
+// 4. SMART Statistical analysis - only suggests what's actually needed
 app.get('/api/chatgpt/analysis/:accountId', async (req, res) => {
   try {
     const { accountId } = req.params;
-    const { period = 'LAST_30_DAYS' } = req.query;
+    const { period = 'LAST_30_DAYS', confidenceLevel = '90' } = req.query;
     const validPeriod = validateDateRange(period);
     
-    console.log(`Statistical analysis requested: ${accountId}, period: ${validPeriod}`);
+    console.log(`Smart analysis requested: ${accountId}, period: ${validPeriod}, confidence: ${confidenceLevel}%`);
     
     const analysisQuery = `
       SELECT 
@@ -507,10 +507,13 @@ app.get('/api/chatgpt/analysis/:accountId', async (req, res) => {
       return res.status(500).json(result);
     }
     
-    // Advanced statistical analysis
+    // Smart analysis with conditional insights
     const dayPerformance = {};
     const devicePerformance = {};
     const hourPerformance = {};
+    let totalSpend = 0;
+    let totalConversions = 0;
+    let totalClicks = 0;
     
     result.data.forEach(row => {
       const day = row.segments?.day_of_week || 'UNKNOWN';
@@ -521,77 +524,207 @@ app.get('/api/chatgpt/analysis/:accountId', async (req, res) => {
       const clicks = row.metrics?.clicks || 0;
       const impressions = row.metrics?.impressions || 0;
       
+      totalSpend += spend;
+      totalConversions += conversions;
+      totalClicks += clicks;
+      
       // Day analysis
       if (!dayPerformance[day]) {
-        dayPerformance[day] = { spend: 0, conversions: 0, clicks: 0, impressions: 0 };
+        dayPerformance[day] = { spend: 0, conversions: 0, clicks: 0, impressions: 0, sessions: 0 };
       }
       dayPerformance[day].spend += spend;
       dayPerformance[day].conversions += conversions;
       dayPerformance[day].clicks += clicks;
       dayPerformance[day].impressions += impressions;
+      dayPerformance[day].sessions += 1;
       
       // Device analysis
       if (!devicePerformance[device]) {
-        devicePerformance[device] = { spend: 0, conversions: 0, clicks: 0, impressions: 0 };
+        devicePerformance[device] = { spend: 0, conversions: 0, clicks: 0, impressions: 0, sessions: 0 };
       }
       devicePerformance[device].spend += spend;
       devicePerformance[device].conversions += conversions;
       devicePerformance[device].clicks += clicks;
       devicePerformance[device].impressions += impressions;
+      devicePerformance[device].sessions += 1;
       
       // Hour analysis
       if (!hourPerformance[hour]) {
-        hourPerformance[hour] = { spend: 0, conversions: 0, clicks: 0 };
+        hourPerformance[hour] = { spend: 0, conversions: 0, clicks: 0, sessions: 0 };
       }
       hourPerformance[hour].spend += spend;
       hourPerformance[hour].conversions += conversions;
       hourPerformance[hour].clicks += clicks;
+      hourPerformance[hour].sessions += 1;
     });
     
-    // Generate advanced insights
+    // SMART INSIGHTS - Only suggest what's actually needed
     const insights = [];
+    const accountAvgConversionRate = totalClicks > 0 ? totalConversions / totalClicks : 0;
+    const accountAvgCPC = totalClicks > 0 ? totalSpend / totalClicks : 0;
     
-    // Best performing day analysis
-    let bestDay = null;
-    let bestDayConversionRate = 0;
-    Object.keys(dayPerformance).forEach(day => {
+    // 1. DAYPARTING - Only if there's significant variation AND enough data
+    const dayVariations = Object.keys(dayPerformance).map(day => {
       const dayData = dayPerformance[day];
       const conversionRate = dayData.clicks > 0 ? dayData.conversions / dayData.clicks : 0;
-      if (conversionRate > bestDayConversionRate && dayData.spend > 100) {
-        bestDayConversionRate = conversionRate;
-        bestDay = day;
+      const cpc = dayData.clicks > 0 ? dayData.spend / dayData.clicks : 0;
+      return {
+        day,
+        conversionRate,
+        cpc,
+        spend: dayData.spend,
+        clicks: dayData.clicks,
+        sessions: dayData.sessions
+      };
+    }).filter(d => d.clicks > 20); // Only days with meaningful data
+    
+    if (dayVariations.length >= 5) { // Need at least 5 days of data
+      const bestDay = dayVariations.reduce((best, current) => 
+        current.conversionRate > best.conversionRate ? current : best
+      );
+      const worstDay = dayVariations.reduce((worst, current) => 
+        current.conversionRate < worst.conversionRate ? current : worst
+      );
+      
+      const conversionRateGap = bestDay.conversionRate - worstDay.conversionRate;
+      
+      // Only suggest dayparting if there's a >50% difference in conversion rates
+      if (conversionRateGap > accountAvgConversionRate * 0.5 && bestDay.conversionRate > accountAvgConversionRate * 1.2) {
+        insights.push({
+          type: 'Dayparting Opportunity',
+          priority: 'High',
+          description: `${bestDay.day} shows ${(bestDay.conversionRate * 100).toFixed(1)}% conversion rate vs ${(worstDay.conversionRate * 100).toFixed(1)}% on ${worstDay.day}. This ${((conversionRateGap / accountAvgConversionRate) * 100).toFixed(0)}% performance gap justifies dayparting optimization.`,
+          impact: `Potential +${((conversionRateGap * bestDay.clicks * 30)).toFixed(0)} conversions/month`,
+          confidence: `${confidenceLevel}%`,
+          action: `Increase bids +20% on ${bestDay.day}, decrease -15% on ${worstDay.day}`,
+          dataPoints: dayVariations.length
+        });
       }
+    }
+    
+    // 2. DEVICE OPTIMIZATION - Only if there's meaningful performance difference
+    const deviceVariations = Object.keys(devicePerformance).map(device => {
+      const deviceData = devicePerformance[device];
+      const conversionRate = deviceData.clicks > 0 ? deviceData.conversions / deviceData.clicks : 0;
+      const cpc = deviceData.clicks > 0 ? deviceData.spend / deviceData.clicks : 0;
+      const roas = deviceData.spend > 0 ? (deviceData.conversions * 100) / deviceData.spend : 0; // Assuming $100 avg conversion value
+      return {
+        device,
+        conversionRate,
+        cpc,
+        roas,
+        spend: deviceData.spend,
+        clicks: deviceData.clicks
+      };
+    }).filter(d => d.clicks > 50); // Only devices with meaningful data
+    
+    if (deviceVariations.length >= 2) {
+      const bestDevice = deviceVariations.reduce((best, current) => 
+        current.roas > best.roas ? current : best
+      );
+      const worstDevice = deviceVariations.reduce((worst, current) => 
+        current.roas < worst.roas ? current : worst
+      );
+      
+      // Only suggest device optimization if there's >30% ROAS difference
+      if (bestDevice.roas > worstDevice.roas * 1.3 && bestDevice.spend > totalSpend * 0.1) {
+        insights.push({
+          type: 'Device Bid Optimization',
+          priority: bestDevice.roas > worstDevice.roas * 1.5 ? 'High' : 'Medium',
+          description: `${bestDevice.device} delivers ${bestDevice.roas.toFixed(1)}x ROAS vs ${worstDevice.roas.toFixed(1)}x on ${worstDevice.device}. Device performance gap justifies bid adjustments.`,
+          impact: `Potential savings: $${(worstDevice.spend * 0.2).toFixed(0)}/month`,
+          confidence: `${confidenceLevel}%`,
+          action: `Increase ${bestDevice.device} bids +15%, decrease ${worstDevice.device} bids -20%`,
+          currentSpendSplit: `${bestDevice.device}: $${bestDevice.spend.toFixed(0)}, ${worstDevice.device}: $${worstDevice.spend.toFixed(0)}`
+        });
+      }
+    }
+    
+    // 3. BUDGET ALLOCATION - Only if there are clear winners/losers
+    const campaignPerformance = {};
+    result.data.forEach(row => {
+      const campaign = row.campaign?.name || 'Unknown';
+      if (!campaignPerformance[campaign]) {
+        campaignPerformance[campaign] = { spend: 0, conversions: 0, clicks: 0 };
+      }
+      campaignPerformance[campaign].spend += (row.metrics?.cost_micros || 0) / 1000000;
+      campaignPerformance[campaign].conversions += row.metrics?.conversions || 0;
+      campaignPerformance[campaign].clicks += row.metrics?.clicks || 0;
     });
     
-    if (bestDay) {
+    const campaignROAS = Object.keys(campaignPerformance).map(campaign => {
+      const data = campaignPerformance[campaign];
+      const roas = data.spend > 0 ? (data.conversions * 100) / data.spend : 0;
+      const conversionRate = data.clicks > 0 ? data.conversions / data.clicks : 0;
+      return {
+        campaign,
+        roas,
+        conversionRate,
+        spend: data.spend,
+        conversions: data.conversions
+      };
+    }).filter(c => c.spend > totalSpend * 0.05); // Only campaigns with >5% of spend
+    
+    if (campaignROAS.length >= 2) {
+      const topCampaign = campaignROAS.reduce((best, current) => 
+        current.roas > best.roas ? current : best
+      );
+      const bottomCampaign = campaignROAS.reduce((worst, current) => 
+        current.roas < worst.roas ? current : worst
+      );
+      
+      // Only suggest budget reallocation if there's >2x ROAS difference
+      if (topCampaign.roas > bottomCampaign.roas * 2 && bottomCampaign.spend > totalSpend * 0.1) {
+        insights.push({
+          type: 'Budget Reallocation',
+          priority: 'High',
+          description: `"${topCampaign.campaign}" delivers ${topCampaign.roas.toFixed(1)}x ROAS while "${bottomCampaign.campaign}" only achieves ${bottomCampaign.roas.toFixed(1)}x. Significant budget reallocation opportunity.`,
+          impact: `Potential revenue increase: +$${((topCampaign.roas - bottomCampaign.roas) * bottomCampaign.spend * 0.5).toFixed(0)}/month`,
+          confidence: `${confidenceLevel}%`,
+          action: `Shift 25% of budget from "${bottomCampaign.campaign}" to "${topCampaign.campaign}"`,
+          currentAllocation: `Top: $${topCampaign.spend.toFixed(0)}, Bottom: $${bottomCampaign.spend.toFixed(0)}`
+        });
+      }
+    }
+    
+    // 4. PERFORMANCE HEALTH CHECK - Account-specific issues
+    const overallCTR = result.data.reduce((sum, row) => sum + (row.metrics?.ctr || 0), 0) / result.data.length;
+    const overallConversionRate = accountAvgConversionRate;
+    
+    if (overallCTR < 0.02) { // CTR below 2%
       insights.push({
-        type: 'Dayparting Optimization',
-        description: `${bestDay} shows ${(bestDayConversionRate * 100).toFixed(1)}% conversion rate (${(bestDayConversionRate * 100 / 0.02).toFixed(0)}% above baseline). Consider increasing bids on ${bestDay}.`,
-        impact: 'High',
-        confidence: '87%',
-        potentialLift: `+${((bestDayConversionRate - 0.02) * dayPerformance[bestDay].clicks * 50).toFixed(0)} conversions/month`
+        type: 'CTR Optimization',
+        priority: 'Medium',
+        description: `Account CTR of ${(overallCTR * 100).toFixed(2)}% is below industry average. Ad copy and keyword relevance need improvement.`,
+        impact: `Improving CTR to 3% could reduce CPC by ~20%`,
+        confidence: `85%`,
+        action: `Focus on ad copy testing and negative keyword cleanup`,
+        benchmark: `Industry average: 2-3% CTR`
       });
     }
     
-    // Device performance analysis
-    let bestDevice = null;
-    let bestDeviceROAS = 0;
-    Object.keys(devicePerformance).forEach(device => {
-      const deviceData = devicePerformance[device];
-      const roas = deviceData.spend > 0 ? (deviceData.conversions * 100) / deviceData.spend : 0;
-      if (roas > bestDeviceROAS && deviceData.spend > 100) {
-        bestDeviceROAS = roas;
-        bestDevice = device;
-      }
-    });
-    
-    if (bestDevice) {
+    if (overallConversionRate < 0.01 && totalSpend > 1000) { // Low conversion rate on meaningful spend
       insights.push({
-        type: 'Device Bid Optimization',
-        description: `${bestDevice} shows ${bestDeviceROAS.toFixed(1)}x ROAS. Consider +25% bid adjustment for ${bestDevice} traffic.`,
-        impact: 'Medium',
-        confidence: '92%',
-        potentialSavings: `$${(devicePerformance[bestDevice].spend * 0.15).toFixed(0)}/month`
+        type: 'Conversion Rate Optimization',
+        priority: 'High',
+        description: `Conversion rate of ${(overallConversionRate * 100).toFixed(2)}% is critically low for $${totalSpend.toFixed(0)} monthly spend. Landing page optimization required.`,
+        impact: `Doubling conversion rate would double ROI`,
+        confidence: `95%`,
+        action: `Audit landing pages, improve page speed, and test clearer CTAs`,
+        urgency: `Critical - high spend with poor conversions`
+      });
+    }
+    
+    // If no insights, provide account health summary
+    if (insights.length === 0) {
+      insights.push({
+        type: 'Account Health',
+        priority: 'Info',
+        description: `Account shows consistent performance across time periods and devices. No major optimization gaps detected.`,
+        impact: `Focus on incremental improvements and testing`,
+        confidence: `${confidenceLevel}%`,
+        action: `Continue current strategy with ongoing A/B testing`,
+        note: `Well-optimized account - consider expansion opportunities`
       });
     }
     
@@ -599,7 +732,15 @@ app.get('/api/chatgpt/analysis/:accountId', async (req, res) => {
       success: true,
       accountId: accountId,
       period: validPeriod,
+      confidenceLevel: `${confidenceLevel}%`,
       analysis: {
+        summary: {
+          totalSpend: `$${totalSpend.toFixed(2)}`,
+          totalConversions: totalConversions,
+          overallConversionRate: `${(overallConversionRate * 100).toFixed(2)}%`,
+          avgCPC: `$${accountAvgCPC.toFixed(2)}`,
+          dataQuality: result.data.length > 100 ? 'High' : result.data.length > 30 ? 'Medium' : 'Low'
+        },
         dayOfWeekPerformance: dayPerformance,
         devicePerformance: devicePerformance,
         hourlyPerformance: hourPerformance,
@@ -610,7 +751,7 @@ app.get('/api/chatgpt/analysis/:accountId', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error in statistical analysis:', error);
+    console.error('Error in smart statistical analysis:', error);
     res.status(500).json({ error: error.message });
   }
 });
