@@ -771,16 +771,14 @@ const keywordQuery = `
     ad_group_criterion.keyword.match_type,
     campaign.name,
     ad_group.name,
-    ad_group_criterion.quality_info.quality_score,
     metrics.clicks,
     metrics.impressions,
     metrics.cost_micros,
     metrics.conversions,
     metrics.ctr,
     metrics.search_impression_share
-  FROM ad_group_criterion 
+  FROM keyword_view 
   WHERE segments.date DURING ${validPeriod}
-    AND ad_group_criterion.type = 'KEYWORD'
     AND ad_group_criterion.status = 'ENABLED'
     AND metrics.impressions > 0
   ORDER BY metrics.cost_micros DESC
@@ -794,19 +792,19 @@ const keywordQuery = `
     }
     
     const keywords = result.data.map(kw => ({
-      keyword: kw.ad_group_criterion?.keyword?.text,
-      matchType: kw.ad_group_criterion?.keyword?.match_type,
-      campaign: kw.campaign?.name,
-      adGroup: kw.ad_group?.name,
-      spend: (kw.metrics?.cost_micros || 0) / 1000000,
-      conversions: kw.metrics?.conversions || 0,
-      clicks: kw.metrics?.clicks || 0,
-      impressions: kw.metrics?.impressions || 0,
-      ctr: (kw.metrics?.ctr || 0) * 100,
-      impressionShare: (kw.metrics?.search_impression_share || 0) * 100,
-      qualityScore: kw.ad_group_criterion?.quality_info?.quality_score || 0,
-      conversionRate: (kw.metrics?.clicks || 0) > 0 ? (kw.metrics?.conversions || 0) / (kw.metrics?.clicks || 0) * 100 : 0
-    }));
+  keyword: kw.ad_group_criterion?.keyword?.text,
+  matchType: kw.ad_group_criterion?.keyword?.match_type,
+  campaign: kw.campaign?.name,
+  adGroup: kw.ad_group?.name,
+  spend: (kw.metrics?.cost_micros || 0) / 1000000,
+  conversions: kw.metrics?.conversions || 0,
+  clicks: kw.metrics?.clicks || 0,
+  impressions: kw.metrics?.impressions || 0,
+  ctr: (kw.metrics?.ctr || 0) * 100,
+  impressionShare: (kw.metrics?.search_impression_share || 0) * 100,
+  qualityScore: 'See Quality Score endpoint', // Not available in keyword_view
+  conversionRate: (kw.metrics?.clicks || 0) > 0 ? (kw.metrics?.conversions || 0) / (kw.metrics?.clicks || 0) * 100 : 0
+}));
     
     // Advanced keyword analysis
     const topPerformers = keywords
