@@ -624,26 +624,27 @@ app.get('/api/chatgpt/keyword-analysis/:accountId', async (req, res) => {
     
     console.log(`Keyword analysis requested: ${accountId}, period: ${validPeriod}`);
     
- const keywordQuery = `
+const keywordQuery = `
   SELECT 
     ad_group_criterion.keyword.text,
     ad_group_criterion.keyword.match_type,
     campaign.name,
     ad_group.name,
+    ad_group_criterion.quality_info.quality_score,
     metrics.clicks,
     metrics.impressions,
     metrics.cost_micros,
     metrics.conversions,
     metrics.ctr,
-    metrics.search_impression_share,
-    ad_group_criterion.quality_info.quality_score
-  FROM keyword_view
-      WHERE segments.date DURING ${validPeriod}
-        AND ad_group_criterion.status = 'ENABLED'
-        AND metrics.impressions > 0
-      ORDER BY metrics.cost_micros DESC
-      LIMIT 300
-    `;
+    metrics.search_impression_share
+  FROM ad_group_criterion 
+  WHERE segments.date DURING ${validPeriod}
+    AND ad_group_criterion.type = 'KEYWORD'
+    AND ad_group_criterion.status = 'ENABLED'
+    AND metrics.impressions > 0
+  ORDER BY metrics.cost_micros DESC
+  LIMIT 300
+`;
     
     const result = await executeGAQLQuery(keywordQuery, accountId);
     
