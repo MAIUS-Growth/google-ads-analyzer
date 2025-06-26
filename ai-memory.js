@@ -1,4 +1,4 @@
-// ai-memory.js - Simple memory system for our AI
+// ai-memory.js - Simple memory system for our AI (FIXED VERSION)
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -117,7 +117,7 @@ class SimpleAIMemory {
       }
       this.memory.failures[patternKey].push({
         action: recommendation.recommendation.action,
-        reason: outcome.actualResults.reason || 'Unknown',
+        reason: actualResults.reason || 'Unknown',
         timestamp: outcome.timestamp
       });
       console.log(`❌ Pattern failure: ${patternKey} now ${pattern.failureCount} failures`);
@@ -136,7 +136,7 @@ class SimpleAIMemory {
     const insights = {
       totalRecommendations: this.memory.recommendations.filter(r => r.accountId === accountId).length,
       successfulPatterns: accountPatterns.filter(p => p.confidence > 0.7),
-      risky Patterns: accountPatterns.filter(p => p.confidence < 0.3),
+      riskyPatterns: accountPatterns.filter(p => p.confidence < 0.3), // FIXED: removed space
       overallSuccessRate: this.calculateOverallSuccessRate(accountId),
       bestPractices: this.getBestPractices(accountId),
       thingsToAvoid: this.getThingsToAvoid(accountId)
