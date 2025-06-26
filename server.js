@@ -1188,6 +1188,182 @@ function generateQSRecommendations(qualityInfo) {
   
   return recommendations.length > 0 ? recommendations : ['Monitor performance and continue testing'];
 }
+// ==================== AI LEARNING ROUTES ====================
+
+// Store a recommendation (when GPT makes a suggestion)
+app.post('/api/ai/store-recommendation', async (req, res) => {
+  try {
+    const { accountId, recommendation } = req.body;
+    
+    console.log(`🤖 GPT made recommendation for ${accountId}:`, recommendation);
+    
+    const recommendationId = await aiMemory.storeRecommendation(accountId, recommendation);
+    
+    res.json({
+      success: true,
+      recommendationId: recommendationId,
+      message: `Recommendation stored. I'll learn from the results!`,
+      nextSteps: `Monitor performance for 30 days, then update me with results`
+    });
+    
+  } catch (error) {
+    console.error('Error storing recommendation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update with actual results (when you see if the recommendation worked)
+app.post('/api/ai/update-outcome', async (req, res) => {
+  try {
+    const { recommendationId, actualResults } = req.body;
+    
+    console.log(`📊 Updating outcome for ${recommendationId}:`, actualResults);
+    
+    await aiMemory.storeOutcome(recommendationId, actualResults);
+    
+    const insights = aiMemory.getInsights(actualResults.accountId);
+    
+    res.json({
+      success: true,
+      message: `Thank you! I've learned from this result.`,
+      learningUpdate: {
+        mySuccessRate: `${(insights.overallSuccessRate * 100).toFixed(1)}%`,
+        totalRecommendations: insights.totalRecommendations,
+        confidenceLevel: insights.successfulPatterns.length > 0 ? 'Growing' : 'Learning'
+      },
+      insights: insights
+    });
+    
+  } catch (error) {
+    console.error('Error updating outcome:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get AI insights for an account
+app.get('/api/ai/insights/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const insights = aiMemory.getInsights(accountId);
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      aiInsights: {
+        myLearningProgress: {
+          totalRecommendationsMade: insights.totalRecommendations,
+          overallSuccessRate: `${(insights.overallSuccessRate * 100).toFixed(1)}%`,
+          confidenceLevel: insights.overallSuccessRate > 0.7 ? 'High' : 
+                          insights.overallSuccessRate > 0.4 ? 'Medium' : 'Learning'
+        },
+        whatIveLearnedWorks: insights.bestPractices,
+        whatIveLearnedToAvoid: insights.thingsToAvoid,
+        highConfidenceStrategies: insights.successfulPatterns.map(p => p.type),
+        needMoreDataOn: insights.riskyPatterns.map(p => p.type)
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error getting AI insights:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Enhanced analysis that includes AI learning
+app.get('/api/chatgpt/smart-analysis/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { period = 'LAST_30_DAYS' } = req.query;
+    
+    console.log(`🧠 Smart AI analysis requested: ${accountId}`);
+    
+    // Get regular analysis
+    const regularAnalysis = await executeGAQLQuery(`
+      SELECT 
+        campaign.name,
+        metrics.clicks,
+        metrics.conversions,
+        metrics.cost_micros,
+        metrics.ctr
+      FROM campaign 
+      WHERE segments.date DURING ${period}
+      ORDER BY metrics.cost_micros DESC
+    `, accountId);
+    
+    // Get AI insights
+    const aiInsights = aiMemory.getInsights(accountId);
+    
+    // Combine data analysis with AI learning
+    const smartRecommendations = [];
+    
+    if (regularAnalysis.success) {
+      const campaigns = regularAnalysis.data;
+      const totalSpend = campaigns.reduce((sum, c) => sum + (c.metrics?.cost_micros || 0), 0) / 1000000;
+      const avgConversionRate = campaigns.reduce((sum, c) => sum + (c.metrics?.conversions || 0), 0) / 
+                               campaigns.reduce((sum, c) => sum + (c.metrics?.clicks || 0), 0);
+      
+      // Use AI learning to make smarter recommendations
+      if (aiInsights.overallSuccessRate > 0.6) {
+        // High confidence recommendations
+        smartRecommendations.push({
+          type: 'high_confidence',
+          recommendation: `Based on ${aiInsights.totalRecommendations} previous recommendations with ${(aiInsights.overallSuccessRate * 100).toFixed(1)}% success rate`,
+          action: aiInsights.bestPractices.length > 0 ? 
+            `Apply proven strategy: ${aiInsights.bestPractices[0]}` : 
+            `Continue current approach - you're performing well`,
+          confidence: '🟢 High',
+          reasoning: 'My learning data shows this approach works for your account'
+        });
+      } else {
+        // Learning mode recommendations
+        smartRecommendations.push({
+          type: 'learning_mode',
+          recommendation: `I'm still learning what works best for your account (${aiInsights.totalRecommendations} recommendations so far)`,
+          action: 'Let\'s test conservative optimizations and track results',
+          confidence: '🟡 Learning',
+          reasoning: 'Building knowledge about your account performance patterns'
+        });
+      }
+      
+      // Account-specific insights
+      if (totalSpend > 5000 && avgConversionRate < 0.02) {
+        smartRecommendations.push({
+          type: 'spend_efficiency',
+          recommendation: `High spend ($${totalSpend.toFixed(0)}) with low conversion rate (${(avgConversionRate * 100).toFixed(2)}%)`,
+          action: 'Focus on conversion rate optimization before scaling',
+          confidence: aiInsights.successfulPatterns.find(p => p.type === 'conversion_optimization') ? '🟢 Proven' : '🟡 Test',
+          reasoning: aiInsights.bestPractices.includes('conversion_optimization') ? 
+            'Previously successful strategy for your account' : 
+            'Logical next step based on data'
+        });
+      }
+    }
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      smartAnalysis: {
+        aiLearningStatus: {
+          recommendationsMade: aiInsights.totalRecommendations,
+          successRate: `${(aiInsights.overallSuccessRate * 100).toFixed(1)}%`,
+          confidenceLevel: aiInsights.overallSuccessRate > 0.6 ? 'Experienced' : 'Learning'
+        },
+        dataAnalysis: regularAnalysis.success ? {
+          totalCampaigns: regularAnalysis.data.length,
+          totalSpend: `$${(regularAnalysis.data.reduce((sum, c) => sum + (c.metrics?.cost_micros || 0), 0) / 1000000).toFixed(2)}`,
+          avgConversionRate: `${(avgConversionRate * 100).toFixed(2)}%`
+        } : null,
+        smartRecommendations: smartRecommendations,
+        provenStrategies: aiInsights.bestPractices,
+        avoidsBasedOnLearning: aiInsights.thingsToAvoid.map(f => f.action)
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in smart analysis:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Start the server
 app.listen(PORT, () => {
