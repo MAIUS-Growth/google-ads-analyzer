@@ -1364,7 +1364,222 @@ app.get('/api/chatgpt/smart-analysis/:accountId', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// ==================== AI LEARNING MONITORING ====================
 
+// Monitor AI learning progress
+app.get('/api/ai/learning-dashboard', async (req, res) => {
+  try {
+    const allPatterns = Object.values(aiMemory.memory.patterns);
+    const allRecommendations = aiMemory.memory.recommendations;
+    const completedRecs = allRecommendations.filter(r => r.status === 'completed');
+    const successfulRecs = allRecommendations.filter(r => r.outcome === true);
+    
+    // Calculate learning metrics
+    const overallSuccessRate = completedRecs.length > 0 ? 
+      (successfulRecs.length / completedRecs.length) : 0;
+    
+    // Learning velocity (how fast AI is learning)
+    const last30Days = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    const recentRecs = allRecommendations.filter(r => 
+      new Date(r.timestamp).getTime() > last30Days
+    );
+    
+    // Confidence by recommendation type
+    const confidenceByType = {};
+    allPatterns.forEach(pattern => {
+      if (!confidenceByType[pattern.type]) {
+        confidenceByType[pattern.type] = {
+          confidence: 0,
+          attempts: 0,
+          successes: 0
+        };
+      }
+      confidenceByType[pattern.type].confidence = pattern.confidence;
+      confidenceByType[pattern.type].attempts = pattern.successCount + pattern.failureCount;
+      confidenceByType[pattern.type].successes = pattern.successCount;
+    });
+    
+    res.json({
+      success: true,
+      learningDashboard: {
+        overview: {
+          totalRecommendations: allRecommendations.length,
+          completedRecommendations: completedRecs.length,
+          pendingRecommendations: allRecommendations.filter(r => r.status === 'pending').length,
+          overallSuccessRate: `${(overallSuccessRate * 100).toFixed(1)}%`,
+          learningVelocity: `${recentRecs.length} recommendations in last 30 days`,
+          expertiseLevel: overallSuccessRate > 0.7 ? 'Expert' : 
+                         overallSuccessRate > 0.4 ? 'Intermediate' : 'Learning'
+        },
+        learningPatterns: Object.keys(confidenceByType).map(type => ({
+          recommendationType: type,
+          confidence: `${(confidenceByType[type].confidence * 100).toFixed(1)}%`,
+          totalAttempts: confidenceByType[type].attempts,
+          successfulAttempts: confidenceByType[type].successes,
+          successRate: confidenceByType[type].attempts > 0 ? 
+            `${((confidenceByType[type].successes / confidenceByType[type].attempts) * 100).toFixed(1)}%` : '0%',
+          status: confidenceByType[type].confidence > 0.7 ? '🟢 Mastered' :
+                  confidenceByType[type].confidence > 0.4 ? '🟡 Learning' : '🔴 Needs Data'
+        })),
+        recentActivity: allRecommendations.slice(-10).reverse().map(r => ({
+          id: r.id,
+          date: r.timestamp.split('T')[0],
+          time: r.timestamp.split('T')[1].split('.')[0],
+          account: r.accountId,
+          type: r.recommendation.type,
+          action: r.recommendation.action,
+          status: r.status,
+          outcome: r.outcome === true ? '✅ Success' : 
+                   r.outcome === false ? '❌ Failed' : '⏳ Pending',
+          expectedImpact: r.recommendation.expectedImpact
+        })),
+        knowledgeGaps: Object.keys(confidenceByType)
+          .filter(type => confidenceByType[type].confidence < 0.3)
+          .map(type => ({
+            area: type,
+            issue: 'Needs more data to learn patterns',
+            suggestion: 'Make more recommendations of this type and track results'
+          })),
+        bestLearnings: Object.keys(confidenceByType)
+          .filter(type => confidenceByType[type].confidence > 0.7)
+          .map(type => ({
+            area: type,
+            confidence: `${(confidenceByType[type].confidence * 100).toFixed(1)}%`,
+            insight: `High success rate in ${type} recommendations`
+          }))
+      },
+      metadata: {
+        lastUpdated: new Date().toISOString(),
+        learningVersion: '1.0',
+        dataRetention: 'Persistent across server restarts'
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in learning dashboard:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message,
+      fallback: 'Learning dashboard temporarily unavailable'
+    });
+  }
+});
+
+// Get learning insights for a specific account
+app.get('/api/ai/account-learning/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const insights = aiMemory.getInsights(accountId);
+    
+    // Calculate account-specific learning metrics
+    const accountRecs = aiMemory.memory.recommendations.filter(r => r.accountId === accountId);
+    const completedAccountRecs = accountRecs.filter(r => r.status === 'completed');
+    const successfulAccountRecs = accountRecs.filter(r => r.outcome === true);
+    
+    const accountSuccessRate = completedAccountRecs.length > 0 ? 
+      (successfulAccountRecs.length / completedAccountRecs.length) : 0;
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      accountLearning: {
+        summary: {
+          recommendationsMade: accountRecs.length,
+          recommendationsCompleted: completedAccountRecs.length,
+          successRate: `${(accountSuccessRate * 100).toFixed(1)}%`,
+          myConfidenceLevel: accountSuccessRate > 0.7 ? 'High Confidence' :
+                           accountSuccessRate > 0.4 ? 'Medium Confidence' : 'Still Learning',
+          expertiseStatus: accountSuccessRate > 0.6 ? 'I know this account well' : 'Learning your account patterns'
+        },
+        whatIveLearnedWorks: insights.bestPractices.slice(0, 5),
+        whatIveLearnedToAvoid: insights.thingsToAvoid.slice(0, 3),
+        recommendationHistory: accountRecs.map(r => ({
+          date: r.timestamp.split('T')[0],
+          type: r.recommendation.type,
+          action: r.recommendation.action.substring(0, 80) + (r.recommendation.action.length > 80 ? '...' : ''),
+          expectedImpact: r.recommendation.expectedImpact,
+          actualOutcome: r.outcome === true ? '✅ Worked' : 
+                        r.outcome === false ? '❌ Failed' : '⏳ Waiting for results',
+          lessonLearned: r.outcome === true ? 'Reinforced strategy' :
+                        r.outcome === false ? 'Avoid similar approaches' : 'Monitoring results'
+        })),
+        nextRecommendationGuidance: {
+          confidence: accountSuccessRate > 0.6 ? 'High - I have proven strategies for your account' :
+                     accountSuccessRate > 0.3 ? 'Medium - Still learning your account patterns' :
+                     'Low - Need more data to understand what works',
+          approach: accountSuccessRate > 0.6 ? 'Will use proven strategies' :
+                   'Will test conservative approaches and learn from results'
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error getting account learning insights:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Learning analytics endpoint
+app.get('/api/ai/learning-analytics', async (req, res) => {
+  try {
+    const { timeframe = '30' } = req.query; // days
+    const cutoffDate = Date.now() - (parseInt(timeframe) * 24 * 60 * 60 * 1000);
+    
+    const recentRecs = aiMemory.memory.recommendations.filter(r => 
+      new Date(r.timestamp).getTime() > cutoffDate
+    );
+    
+    const recentOutcomes = aiMemory.memory.outcomes.filter(o => 
+      new Date(o.timestamp).getTime() > cutoffDate
+    );
+    
+    // Learning trends
+    const learningTrends = {};
+    recentOutcomes.forEach(outcome => {
+      const date = outcome.timestamp.split('T')[0];
+      if (!learningTrends[date]) {
+        learningTrends[date] = { successes: 0, failures: 0 };
+      }
+      if (outcome.wasSuccessful) {
+        learningTrends[date].successes++;
+      } else {
+        learningTrends[date].failures++;
+      }
+    });
+    
+    res.json({
+      success: true,
+      analytics: {
+        timeframe: `Last ${timeframe} days`,
+        activity: {
+          recommendationsMade: recentRecs.length,
+          outcomesRecorded: recentOutcomes.length,
+          successfulPredictions: recentOutcomes.filter(o => o.wasSuccessful).length,
+          accuracyTrend: recentOutcomes.length > 0 ? 
+            `${((recentOutcomes.filter(o => o.wasSuccessful).length / recentOutcomes.length) * 100).toFixed(1)}%` : 'No data'
+        },
+        dailyLearningTrend: Object.keys(learningTrends).map(date => ({
+          date: date,
+          successes: learningTrends[date].successes,
+          failures: learningTrends[date].failures,
+          successRate: learningTrends[date].successes + learningTrends[date].failures > 0 ?
+            `${((learningTrends[date].successes / (learningTrends[date].successes + learningTrends[date].failures)) * 100).toFixed(1)}%` : '0%'
+        })).sort((a, b) => a.date.localeCompare(b.date)),
+        improvementAreas: Object.values(aiMemory.memory.patterns)
+          .filter(p => p.failureCount > p.successCount && p.failureCount > 1)
+          .map(p => ({
+            area: p.type,
+            needsImprovement: `${p.failureCount} failures vs ${p.successCount} successes`,
+            suggestion: 'Review approach and test different strategies'
+          }))
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in learning analytics:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 // Start the server
 app.listen(PORT, () => {
   console.log(`🚀 Agency Google Ads API Server running on port ${PORT}`);
