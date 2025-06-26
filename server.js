@@ -70,273 +70,286 @@ class GoogleAdsIntelligenceEngine {
     };
   }
 
-  buildQuery(analysisType, dateRange = 'LAST_30_DAYS', filters = {}) {
-    const queries = {
-      // COMPLETE ACCOUNT OVERVIEW
-      accountOverview: `
-        SELECT 
-          customer.id,
-          customer.descriptive_name,
-          customer.currency_code,
-          customer.time_zone,
-          customer.auto_tagging_enabled,
-          customer.call_reporting_setting.call_conversion_action,
-          customer.call_reporting_setting.call_conversion_reporting_enabled,
-          customer.conversion_tracking_setting.google_ads_conversion_customer,
-          customer.conversion_tracking_setting.google_ads_cross_account_conversion_tracking_id,
-          customer.remarketing_setting.google_global_site_tag,
-          customer.manager,
-          customer.test_account,
-          customer.has_partners_badge,
-          customer.optimization_score,
-          customer.resource_name
-        FROM customer
-      `,
+buildQuery(analysisType, dateRange = 'LAST_30_DAYS', filters = {}) {
+  const queries = {
+    // COMPLETE ACCOUNT OVERVIEW
+    accountOverview: `
+      SELECT 
+        customer.id,
+        customer.descriptive_name,
+        customer.currency_code,
+        customer.time_zone,
+        customer.auto_tagging_enabled,
+        customer.manager,
+        customer.test_account
+      FROM customer
+    `,
 
-      // COMPREHENSIVE CAMPAIGN INTELLIGENCE (ALL TYPES)
-      campaignIntelligence: `
-        SELECT 
-          customer.id,
-          campaign.id,
-          campaign.name,
-          campaign.status,
-          campaign.serving_status,
-          campaign.advertising_channel_type,
-          campaign.advertising_channel_sub_type,
-          campaign.campaign_budget.amount_micros,
-          campaign.campaign_budget.delivery_method,
-          campaign.bidding_strategy_type,
-          campaign.bidding_strategy,
-          campaign.target_cpa.target_cpa_micros,
-          campaign.target_roas.target_roas,
-          campaign.target_spend.target_spend_micros,
-          campaign.maximize_conversions.target_cpa_micros,
-          campaign.maximize_conversion_value.target_roas,
-          campaign.manual_cpc.enhanced_cpc_enabled,
-          campaign.manual_cpm,
-          campaign.manual_cpv,
-          campaign.start_date,
-          campaign.end_date,
-          campaign.optimization_score,
-          campaign.app_campaign_setting.app_id,
-          campaign.hotel_setting.hotel_center_id,
-          campaign.local_campaign_setting.location_source_type,
-          campaign.performance_max_upgrade.performance_max_campaign,
-          campaign.shopping_setting.merchant_id,
-          campaign.shopping_setting.sales_country,
-          campaign.shopping_setting.campaign_priority,
-          campaign.video_brand_safety_suitability,
-          segments.date,
-          segments.day_of_week,
-          segments.hour,
-          segments.device,
-          segments.click_type,
-          segments.conversion_action_category,
-          segments.new_versus_returning_customers,
-          
-          -- COMPLETE METRICS SUITE
-          metrics.impressions,
-          metrics.clicks,
-          metrics.cost_micros,
-          metrics.conversions,
-          metrics.conversions_value,
-          metrics.conversions_from_interactions_rate,
-          metrics.view_through_conversions,
-          metrics.cross_device_conversions,
-          metrics.ctr,
-          metrics.average_cpc,
-          metrics.average_cpm,
-          metrics.average_cpv,
-          metrics.cost_per_conversion,
-          metrics.cost_per_current_model_attributed_conversion,
-          metrics.value_per_conversion,
-          metrics.value_per_current_model_attributed_conversion,
-          
-          -- IMPRESSION SHARE METRICS (COMPLETE)
-          metrics.impression_share,
-          metrics.search_impression_share,
-          metrics.search_budget_lost_impression_share,
-          metrics.search_rank_lost_impression_share,
-          metrics.search_exact_match_impression_share,
-          metrics.content_impression_share,
-          metrics.content_budget_lost_impression_share,
-          metrics.content_rank_lost_impression_share,
-          
-          -- AUCTION INSIGHTS & COMPETITIVE METRICS
-          metrics.auction_insight_search_impression_share,
-          metrics.auction_insight_search_outranking_share,
-          metrics.auction_insight_search_overlap_rate,
-          metrics.auction_insight_search_position_above_rate,
-          metrics.auction_insight_search_top_impression_rate,
-          
-          -- VIDEO CAMPAIGN METRICS
-          metrics.video_views,
-          metrics.video_view_rate,
-          metrics.video_quartile_p25_rate,
-          metrics.video_quartile_p50_rate,
-          metrics.video_quartile_p75_rate,
-          metrics.video_quartile_p100_rate,
-          
-          -- SHOPPING CAMPAIGN METRICS
-          metrics.shopping_legacy_conversion_value,
-          metrics.shopping_legacy_conversions,
-          
-          -- APP CAMPAIGN METRICS  
-          metrics.app_install_rate,
-          metrics.app_installs,
-          
-          -- NEW CUSTOMER METRICS
-          metrics.new_customer_lifetime_value,
-          metrics.existing_customer_lifetime_value,
-          
-          -- PERFORMANCE MAX METRICS
-          metrics.asset_group_conversions,
-          metrics.asset_group_conversions_value
-          
-        FROM campaign 
-        WHERE segments.date DURING ${dateRange}
-        ORDER BY metrics.cost_micros DESC
-      `,
+    // COMPREHENSIVE CAMPAIGN INTELLIGENCE (FIXED FIELDS)
+    campaignIntelligence: `
+      SELECT 
+        customer.id,
+        campaign.id,
+        campaign.name,
+        campaign.status,
+        campaign.serving_status,
+        campaign.advertising_channel_type,
+        campaign.advertising_channel_sub_type,
+        campaign.bidding_strategy_type,
+        campaign.start_date,
+        campaign.end_date,
+        segments.date,
+        segments.day_of_week,
+        segments.hour,
+        segments.device,
+        segments.click_type,
+        
+        -- CORE METRICS (VALIDATED)
+        metrics.impressions,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions,
+        metrics.conversions_value,
+        metrics.view_through_conversions,
+        metrics.ctr,
+        metrics.average_cpc,
+        metrics.average_cpm,
+        metrics.cost_per_conversion,
+        metrics.value_per_conversion
+        
+      FROM campaign 
+      WHERE segments.date DURING ${dateRange}
+        AND metrics.impressions > 0
+      ORDER BY metrics.cost_micros DESC
+    `,
 
-      // PERFORMANCE MAX DEEP DIVE
-      performanceMaxIntelligence: `
-        SELECT 
-          campaign.name,
-          asset_group.name,
-          asset_group.status,
-          asset_group.resource_name,
-          asset_group.final_urls,
-          asset_group.final_mobile_urls,
-          asset_group.path1,
-          asset_group.path2,
-          segments.date,
-          segments.asset_interaction_target.asset,
-          segments.asset_interaction_target.interaction_type,
-          metrics.impressions,
-          metrics.clicks,
-          metrics.cost_micros,
-          metrics.conversions,
-          metrics.conversions_value,
-          metrics.view_through_conversions,
-          metrics.all_conversions,
-          metrics.all_conversions_value
-        FROM asset_group
-        WHERE segments.date DURING ${dateRange}
-          AND campaign.advertising_channel_type = 'PERFORMANCE_MAX'
-          AND metrics.impressions > 0
-        ORDER BY metrics.conversions DESC
-      `,
+    // IMPRESSION SHARE ANALYSIS (CORRECTED)
+    impressionShareIntelligence: `
+      SELECT 
+        campaign.name,
+        campaign.advertising_channel_type,
+        segments.date,
+        metrics.impressions,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions,
+        metrics.search_impression_share,
+        metrics.search_budget_lost_impression_share,
+        metrics.search_rank_lost_impression_share,
+        metrics.search_exact_match_impression_share
+      FROM campaign
+      WHERE segments.date DURING ${dateRange}
+        AND metrics.impressions > 0
+        AND campaign.advertising_channel_type = 'SEARCH'
+      ORDER BY metrics.search_impression_share DESC
+    `,
 
-      // SHOPPING & RETAIL INTELLIGENCE
-      shoppingIntelligence: `
-        SELECT 
-          campaign.name,
-          ad_group.name,
-          segments.product_item_id,
-          segments.product_title,
-          segments.product_brand,
-          segments.product_category_level1,
-          segments.product_category_level2,
-          segments.product_category_level3,
-          segments.product_category_level4,
-          segments.product_category_level5,
-          segments.product_condition,
-          segments.product_country,
-          segments.product_language,
-          segments.product_price,
-          segments.product_currency,
-          segments.date,
-          metrics.impressions,
-          metrics.clicks,
-          metrics.cost_micros,
-          metrics.conversions,
-          metrics.conversions_value,
-          metrics.ctr,
-          metrics.average_cpc,
-          shopping_performance_view.click_potential,
-          shopping_performance_view.click_potential_rank
-        FROM shopping_performance_view
-        WHERE segments.date DURING ${dateRange}
-          AND metrics.impressions > 0
-        ORDER BY metrics.conversions_value DESC
-      `,
+    // SHOPPING INTELLIGENCE (FIXED FIELDS)
+    shoppingIntelligence: `
+      SELECT 
+        campaign.name,
+        ad_group.name,
+        segments.product_item_id,
+        segments.product_title,
+        segments.product_brand,
+        segments.product_category_level1,
+        segments.product_category_level2,
+        segments.product_category_level3,
+        segments.product_condition,
+        segments.product_country,
+        segments.product_language,
+        segments.date,
+        metrics.impressions,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions,
+        metrics.conversions_value,
+        metrics.ctr,
+        metrics.average_cpc
+      FROM shopping_performance_view
+      WHERE segments.date DURING ${dateRange}
+        AND metrics.impressions > 0
+      ORDER BY metrics.conversions_value DESC
+    `,
 
-      // VIDEO & YOUTUBE INTELLIGENCE
-      videoIntelligence: `
-        SELECT 
-          campaign.name,
-          ad_group.name,
-          ad_group_ad.ad.video_ad.video.id,
-          ad_group_ad.ad.video_ad.video.title,
-          ad_group_ad.ad.video_ad.video.duration_millis,
-          segments.date,
-          segments.ad_destination_type,
-          segments.ad_network_type,
-          metrics.impressions,
-          metrics.clicks,
-          metrics.cost_micros,
-          metrics.conversions,
-          metrics.video_views,
-          metrics.video_view_rate,
-          metrics.video_quartile_p25_rate,
-          metrics.video_quartile_p50_rate,
-          metrics.video_quartile_p75_rate,
-          metrics.video_quartile_p100_rate,
-          metrics.average_cpv,
-          metrics.cost_per_conversion
-        FROM ad_group_ad
-        WHERE segments.date DURING ${dateRange}
-          AND campaign.advertising_channel_type = 'VIDEO'
-          AND metrics.impressions > 0
-        ORDER BY metrics.video_views DESC
-      `,
+    // PERFORMANCE MAX (SIMPLIFIED TO AVOID ERRORS)
+    performanceMaxIntelligence: `
+      SELECT 
+        campaign.name,
+        campaign.advertising_channel_type,
+        segments.date,
+        metrics.impressions,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions,
+        metrics.conversions_value,
+        metrics.ctr,
+        metrics.average_cpc
+      FROM campaign
+      WHERE segments.date DURING ${dateRange}
+        AND campaign.advertising_channel_type = 'PERFORMANCE_MAX'
+        AND metrics.impressions > 0
+      ORDER BY metrics.conversions DESC
+    `,
 
-      // NEW CUSTOMER LIFETIME VALUE ANALYSIS
-      customerLifetimeValueIntelligence: `
-        SELECT 
-          campaign.name,
-          ad_group.name,
-          segments.date,
-          segments.new_versus_returning_customers,
-          segments.conversion_action_category,
-          metrics.conversions,
-          metrics.conversions_value,
-          metrics.new_customer_lifetime_value,
-          metrics.existing_customer_lifetime_value,
-          metrics.cost_micros,
-          metrics.clicks
-        FROM campaign
-        WHERE segments.date DURING ${dateRange}
-          AND metrics.conversions > 0
-        ORDER BY metrics.new_customer_lifetime_value DESC
-      `,
+    // VIDEO INTELLIGENCE (SIMPLIFIED)
+    videoIntelligence: `
+      SELECT 
+        campaign.name,
+        ad_group.name,
+        segments.date,
+        metrics.impressions,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions,
+        metrics.video_views,
+        metrics.video_view_rate,
+        metrics.average_cpv
+      FROM ad_group_ad
+      WHERE segments.date DURING ${dateRange}
+        AND campaign.advertising_channel_type = 'VIDEO'
+        AND metrics.impressions > 0
+      ORDER BY metrics.video_views DESC
+    `,
 
-      // IMPRESSION SHARE ANALYSIS
-      impressionShareIntelligence: `
-        SELECT 
-          campaign.name,
-          campaign.advertising_channel_type,
-          segments.date,
-          metrics.impression_share,
-          metrics.search_impression_share,
-          metrics.search_budget_lost_impression_share,
-          metrics.search_rank_lost_impression_share,
-          metrics.search_exact_match_impression_share,
-          metrics.content_impression_share,
-          metrics.content_budget_lost_impression_share,
-          metrics.content_rank_lost_impression_share,
-          metrics.impressions,
-          metrics.cost_micros,
-          metrics.conversions
-        FROM campaign
-        WHERE segments.date DURING ${dateRange}
-          AND metrics.impressions > 0
-        ORDER BY metrics.impression_share DESC
-      `
-    };
+    // CUSTOMER LIFETIME VALUE (SIMPLIFIED)
+    customerLifetimeValueIntelligence: `
+      SELECT 
+        campaign.name,
+        segments.date,
+        segments.new_versus_returning_customers,
+        metrics.conversions,
+        metrics.conversions_value,
+        metrics.cost_micros,
+        metrics.clicks
+      FROM campaign
+      WHERE segments.date DURING ${dateRange}
+        AND metrics.conversions > 0
+      ORDER BY metrics.conversions_value DESC
+    `,
 
-    return queries[analysisType] || queries.campaignIntelligence;
-  }
+    // ENHANCED SEARCH TERMS (WORKING VERSION)
+    searchTermsIntelligence: `
+      SELECT 
+        search_term_view.search_term,
+        search_term_view.status,
+        campaign.name,
+        ad_group.name,
+        ad_group_criterion.keyword.text,
+        ad_group_criterion.keyword.match_type,
+        segments.date,
+        segments.device,
+        metrics.impressions,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions,
+        metrics.conversions_value,
+        metrics.ctr,
+        metrics.average_cpc
+      FROM search_term_view 
+      WHERE segments.date DURING ${dateRange}
+        AND metrics.impressions > 0
+      ORDER BY metrics.conversions_value DESC
+    `,
+
+    // GEOGRAPHIC INTELLIGENCE (SIMPLIFIED)
+    locationIntelligence: `
+      SELECT 
+        campaign.name,
+        ad_group.name,
+        geographic_view.country_criterion_id,
+        geographic_view.location_type,
+        segments.geo_target_city,
+        segments.geo_target_region,
+        segments.date,
+        metrics.impressions,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions,
+        metrics.conversions_value,
+        metrics.ctr,
+        metrics.average_cpc
+      FROM geographic_view 
+      WHERE segments.date DURING ${dateRange}
+        AND metrics.impressions > 0
+      ORDER BY metrics.conversions_value DESC
+    `,
+
+    // DEVICE & TIME ANALYSIS
+    deviceTimeIntelligence: `
+      SELECT 
+        campaign.name,
+        segments.date,
+        segments.day_of_week,
+        segments.hour,
+        segments.device,
+        metrics.impressions,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions,
+        metrics.conversions_value,
+        metrics.ctr,
+        metrics.average_cpc
+      FROM campaign 
+      WHERE segments.date DURING ${dateRange}
+        AND metrics.impressions > 0
+      ORDER BY segments.date DESC, segments.hour ASC
+    `,
+
+    // KEYWORD INTELLIGENCE (WORKING VERSION)
+    keywordIntelligence: `
+      SELECT 
+        campaign.name,
+        ad_group.name,
+        ad_group_criterion.keyword.text,
+        ad_group_criterion.keyword.match_type,
+        ad_group_criterion.quality_info.quality_score,
+        ad_group_criterion.status,
+        segments.date,
+        segments.device,
+        metrics.impressions,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions,
+        metrics.ctr,
+        metrics.average_cpc,
+        metrics.search_impression_share
+      FROM keyword_view 
+      WHERE segments.date DURING ${dateRange}
+        AND ad_group_criterion.status = 'ENABLED'
+        AND metrics.impressions > 0
+      ORDER BY metrics.cost_micros DESC
+    `,
+
+    // AD PERFORMANCE (WORKING VERSION)
+    adIntelligence: `
+      SELECT 
+        campaign.name,
+        ad_group.name,
+        ad_group_ad.ad.id,
+        ad_group_ad.ad.type,
+        ad_group_ad.ad.expanded_text_ad.headline_part1,
+        ad_group_ad.ad.expanded_text_ad.headline_part2,
+        ad_group_ad.ad.expanded_text_ad.description,
+        ad_group_ad.status,
+        segments.date,
+        segments.device,
+        metrics.impressions,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions,
+        metrics.ctr,
+        metrics.average_cpc
+      FROM ad_group_ad 
+      WHERE segments.date DURING ${dateRange}
+        AND ad_group_ad.status = 'ENABLED'
+        AND metrics.impressions > 0
+      ORDER BY metrics.conversions DESC
+    `
+  };
+
+  return queries[analysisType] || queries.campaignIntelligence;
+}
 
   getDateDaysAgo(days) {
     const date = new Date();
@@ -416,49 +429,41 @@ class GoogleAdsIntelligenceEngine {
     return recommendations;
   }
 
-  static analyzeNewCustomerLTV(ltvData) {
-    const customerSegments = {
-      new: { conversions: 0, value: 0, ltv: 0, spend: 0 },
-      returning: { conversions: 0, value: 0, ltv: 0, spend: 0 }
-    };
+static analyzeNewCustomerLTV(ltvData) {
+  const customerSegments = {
+    new: { conversions: 0, value: 0, spend: 0 },
+    returning: { conversions: 0, value: 0, spend: 0 }
+  };
 
-    ltvData.forEach(row => {
-      const segment = row.segments?.new_versus_returning_customers === 'NEW' ? 'new' : 'returning';
-      
-      customerSegments[segment].conversions += row.metrics?.conversions || 0;
-      customerSegments[segment].value += row.metrics?.conversions_value || 0;
-      customerSegments[segment].spend += (row.metrics?.cost_micros || 0) / 1000000;
-      
-      if (segment === 'new') {
-        customerSegments[segment].ltv += row.metrics?.new_customer_lifetime_value || 0;
-      } else {
-        customerSegments[segment].ltv += row.metrics?.existing_customer_lifetime_value || 0;
-      }
-    });
+  ltvData.forEach(row => {
+    const segment = row.segments?.new_versus_returning_customers === 'NEW' ? 'new' : 'returning';
+    
+    customerSegments[segment].conversions += row.metrics?.conversions || 0;
+    customerSegments[segment].value += row.metrics?.conversions_value || 0;
+    customerSegments[segment].spend += (row.metrics?.cost_micros || 0) / 1000000;
+  });
 
-    return {
-      newCustomers: {
-        ...customerSegments.new,
-        avgLTV: customerSegments.new.conversions > 0 ? 
-          (customerSegments.new.ltv / customerSegments.new.conversions).toFixed(2) : '0',
-        roas: customerSegments.new.spend > 0 ? 
-          (customerSegments.new.value / customerSegments.new.spend).toFixed(2) : '0',
-        ltvRoas: customerSegments.new.spend > 0 ? 
-          (customerSegments.new.ltv / customerSegments.new.spend).toFixed(2) : '0'
-      },
-      returningCustomers: {
-        ...customerSegments.returning,
-        avgLTV: customerSegments.returning.conversions > 0 ? 
-          (customerSegments.returning.ltv / customerSegments.returning.conversions).toFixed(2) : '0',
-        roas: customerSegments.returning.spend > 0 ? 
-          (customerSegments.returning.value / customerSegments.returning.spend).toFixed(2) : '0'
-      },
-      insights: {
-        newCustomerPremium: customerSegments.new.conversions > 0 && customerSegments.returning.conversions > 0 ? 
-          `${(((customerSegments.new.ltv / customerSegments.new.conversions) / (customerSegments.returning.ltv / customerSegments.returning.conversions) - 1) * 100).toFixed(1)}%` : 'Insufficient data'
-      }
-    };
-  }
+  return {
+    newCustomers: {
+      ...customerSegments.new,
+      roas: customerSegments.new.spend > 0 ? 
+        (customerSegments.new.value / customerSegments.new.spend).toFixed(2) : '0',
+      avgOrderValue: customerSegments.new.conversions > 0 ? 
+        (customerSegments.new.value / customerSegments.new.conversions).toFixed(2) : '0'
+    },
+    returningCustomers: {
+      ...customerSegments.returning,
+      roas: customerSegments.returning.spend > 0 ? 
+        (customerSegments.returning.value / customerSegments.returning.spend).toFixed(2) : '0',
+      avgOrderValue: customerSegments.returning.conversions > 0 ? 
+        (customerSegments.returning.value / customerSegments.returning.conversions).toFixed(2) : '0'
+    },
+    insights: {
+      newVsReturningPerformance: customerSegments.new.conversions > 0 && customerSegments.returning.conversions > 0 ? 
+        `New customers have ${((customerSegments.new.value / customerSegments.new.conversions) / (customerSegments.returning.value / customerSegments.returning.conversions)).toFixed(1)}x AOV vs returning` : 
+        'Insufficient data for comparison'
+    }
+  };
 }
 
 // Initialize the enhanced intelligence engine
