@@ -27,406 +27,224 @@ console.log('🧠 AI Memory System initialized');
 class GoogleAdsIntelligenceEngine {
   constructor() {
     this.dataLayers = {
-      // Core Resources
       account: 'customer',
       campaign: 'campaign',
       adGroup: 'ad_group', 
       ads: 'ad_group_ad',
       keywords: 'keyword_view',
       searchTerms: 'search_term_view',
-      
-      // Advanced Campaign Types
       performanceMax: 'asset_group',
       shopping: 'shopping_performance_view',
       video: 'video',
-      app: 'campaign',
-      local: 'campaign',
-      discovery: 'campaign',
-      smart: 'campaign',
-      hotel: 'hotel_group_view',
-      
-      // Audience & Demographics
       audiences: 'audience_view',
-      demographics: 'age_range_view',
-      userLists: 'user_list',
-      customAudiences: 'custom_audience',
-      
-      // Geographic & Placement
       locations: 'geographic_view',
-      placements: 'detail_placement_view',
-      managedPlacements: 'managed_placement_view',
-      
-      // Assets & Creative
-      assets: 'asset',
-      assetGroups: 'asset_group',
-      assetGroupAssets: 'asset_group_asset',
-      
-      // Extensions & Features
-      extensions: 'extension_feed_item',
-      callouts: 'callout_feed_item',
-      sitelinks: 'sitelink_feed_item',
-      
-      // Conversion & Attribution
-      conversions: 'conversion_action',
-      conversionCustomVariable: 'conversion_custom_variable',
-      customerLifetime: 'customer_client',
-      
-      // Administrative
-      changeHistory: 'change_event',
-      recommendations: 'recommendation',
-      policies: 'ad_group_ad_policy_summary',
-      
-      // Landing Pages & Quality
-      landingPages: 'landing_page_view',
-      expandedLandingPages: 'expanded_landing_page_view',
-      
-      // Product & Shopping
-      productGroups: 'product_group_view',
-      shoppingProducts: 'shopping_product_view',
-      merchantCenter: 'merchant_center_link'
+      conversions: 'conversion_action'
     };
   }
 
-buildQuery(analysisType, dateRange = 'LAST_30_DAYS', filters = {}) {
-  const queries = {
-    // COMPLETE ACCOUNT OVERVIEW
-    accountOverview: `
-      SELECT 
-        customer.id,
-        customer.descriptive_name,
-        customer.currency_code,
-        customer.time_zone,
-        customer.auto_tagging_enabled,
-        customer.manager,
-        customer.test_account
-      FROM customer
-    `,
+  buildQuery(analysisType, dateRange = 'LAST_30_DAYS', filters = {}) {
+    const queries = {
+      accountOverview: `
+        SELECT 
+          customer.id,
+          customer.descriptive_name,
+          customer.currency_code,
+          customer.time_zone,
+          customer.manager
+        FROM customer
+      `,
 
-    // COMPREHENSIVE CAMPAIGN INTELLIGENCE (FIXED FIELDS)
-    campaignIntelligence: `
-      SELECT 
-        customer.id,
-        campaign.id,
-        campaign.name,
-        campaign.status,
-        campaign.serving_status,
-        campaign.advertising_channel_type,
-        campaign.advertising_channel_sub_type,
-        campaign.bidding_strategy_type,
-        campaign.start_date,
-        campaign.end_date,
-        segments.date,
-        segments.day_of_week,
-        segments.hour,
-        segments.device,
-        segments.click_type,
-        
-        -- CORE METRICS (VALIDATED)
-        metrics.impressions,
-        metrics.clicks,
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.conversions_value,
-        metrics.view_through_conversions,
-        metrics.ctr,
-        metrics.average_cpc,
-        metrics.average_cpm,
-        metrics.cost_per_conversion,
-        metrics.value_per_conversion
-        
-      FROM campaign 
-      WHERE segments.date DURING ${dateRange}
-        AND metrics.impressions > 0
-      ORDER BY metrics.cost_micros DESC
-    `,
+      campaignIntelligence: `
+        SELECT 
+          customer.id,
+          campaign.id,
+          campaign.name,
+          campaign.status,
+          campaign.advertising_channel_type,
+          segments.date,
+          segments.day_of_week,
+          segments.device,
+          metrics.impressions,
+          metrics.clicks,
+          metrics.cost_micros,
+          metrics.conversions,
+          metrics.conversions_value,
+          metrics.ctr,
+          metrics.average_cpc
+        FROM campaign 
+        WHERE segments.date DURING ${dateRange}
+          AND metrics.impressions > 0
+        ORDER BY metrics.cost_micros DESC
+      `,
 
-    // IMPRESSION SHARE ANALYSIS (CORRECTED)
-    impressionShareIntelligence: `
-      SELECT 
-        campaign.name,
-        campaign.advertising_channel_type,
-        segments.date,
-        metrics.impressions,
-        metrics.clicks,
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.search_impression_share,
-        metrics.search_budget_lost_impression_share,
-        metrics.search_rank_lost_impression_share,
-        metrics.search_exact_match_impression_share
-      FROM campaign
-      WHERE segments.date DURING ${dateRange}
-        AND metrics.impressions > 0
-        AND campaign.advertising_channel_type = 'SEARCH'
-      ORDER BY metrics.search_impression_share DESC
-    `,
+      impressionShareIntelligence: `
+        SELECT 
+          campaign.name,
+          campaign.advertising_channel_type,
+          segments.date,
+          metrics.impressions,
+          metrics.clicks,
+          metrics.cost_micros,
+          metrics.conversions,
+          metrics.search_impression_share,
+          metrics.search_budget_lost_impression_share,
+          metrics.search_rank_lost_impression_share
+        FROM campaign
+        WHERE segments.date DURING ${dateRange}
+          AND metrics.impressions > 0
+          AND campaign.advertising_channel_type = 'SEARCH'
+        ORDER BY metrics.search_impression_share DESC
+      `,
 
-    // SHOPPING INTELLIGENCE (FIXED FIELDS)
-    shoppingIntelligence: `
-      SELECT 
-        campaign.name,
-        ad_group.name,
-        segments.product_item_id,
-        segments.product_title,
-        segments.product_brand,
-        segments.product_category_level1,
-        segments.product_category_level2,
-        segments.product_category_level3,
-        segments.product_condition,
-        segments.product_country,
-        segments.product_language,
-        segments.date,
-        metrics.impressions,
-        metrics.clicks,
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.conversions_value,
-        metrics.ctr,
-        metrics.average_cpc
-      FROM shopping_performance_view
-      WHERE segments.date DURING ${dateRange}
-        AND metrics.impressions > 0
-      ORDER BY metrics.conversions_value DESC
-    `,
+      shoppingIntelligence: `
+        SELECT 
+          campaign.name,
+          ad_group.name,
+          segments.product_item_id,
+          segments.product_title,
+          segments.product_brand,
+          segments.product_category_level1,
+          segments.date,
+          metrics.impressions,
+          metrics.clicks,
+          metrics.cost_micros,
+          metrics.conversions,
+          metrics.conversions_value
+        FROM shopping_performance_view
+        WHERE segments.date DURING ${dateRange}
+          AND metrics.impressions > 0
+        ORDER BY metrics.conversions_value DESC
+      `,
 
-    // PERFORMANCE MAX (SIMPLIFIED TO AVOID ERRORS)
-    performanceMaxIntelligence: `
-      SELECT 
-        campaign.name,
-        campaign.advertising_channel_type,
-        segments.date,
-        metrics.impressions,
-        metrics.clicks,
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.conversions_value,
-        metrics.ctr,
-        metrics.average_cpc
-      FROM campaign
-      WHERE segments.date DURING ${dateRange}
-        AND campaign.advertising_channel_type = 'PERFORMANCE_MAX'
-        AND metrics.impressions > 0
-      ORDER BY metrics.conversions DESC
-    `,
+      performanceMaxIntelligence: `
+        SELECT 
+          campaign.name,
+          campaign.advertising_channel_type,
+          segments.date,
+          metrics.impressions,
+          metrics.clicks,
+          metrics.cost_micros,
+          metrics.conversions,
+          metrics.conversions_value
+        FROM campaign
+        WHERE segments.date DURING ${dateRange}
+          AND campaign.advertising_channel_type = 'PERFORMANCE_MAX'
+          AND metrics.impressions > 0
+        ORDER BY metrics.conversions DESC
+      `,
 
-    // VIDEO INTELLIGENCE (SIMPLIFIED)
-    videoIntelligence: `
-      SELECT 
-        campaign.name,
-        ad_group.name,
-        segments.date,
-        metrics.impressions,
-        metrics.clicks,
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.video_views,
-        metrics.video_view_rate,
-        metrics.average_cpv
-      FROM ad_group_ad
-      WHERE segments.date DURING ${dateRange}
-        AND campaign.advertising_channel_type = 'VIDEO'
-        AND metrics.impressions > 0
-      ORDER BY metrics.video_views DESC
-    `,
+      customerLifetimeValueIntelligence: `
+        SELECT 
+          campaign.name,
+          segments.date,
+          segments.new_versus_returning_customers,
+          metrics.conversions,
+          metrics.conversions_value,
+          metrics.cost_micros,
+          metrics.clicks
+        FROM campaign
+        WHERE segments.date DURING ${dateRange}
+          AND metrics.conversions > 0
+        ORDER BY metrics.conversions_value DESC
+      `,
 
-    // CUSTOMER LIFETIME VALUE (SIMPLIFIED)
-    customerLifetimeValueIntelligence: `
-      SELECT 
-        campaign.name,
-        segments.date,
-        segments.new_versus_returning_customers,
-        metrics.conversions,
-        metrics.conversions_value,
-        metrics.cost_micros,
-        metrics.clicks
-      FROM campaign
-      WHERE segments.date DURING ${dateRange}
-        AND metrics.conversions > 0
-      ORDER BY metrics.conversions_value DESC
-    `,
+      searchTermsIntelligence: `
+        SELECT 
+          search_term_view.search_term,
+          search_term_view.status,
+          campaign.name,
+          ad_group.name,
+          ad_group_criterion.keyword.text,
+          ad_group_criterion.keyword.match_type,
+          segments.date,
+          metrics.impressions,
+          metrics.clicks,
+          metrics.cost_micros,
+          metrics.conversions,
+          metrics.conversions_value
+        FROM search_term_view 
+        WHERE segments.date DURING ${dateRange}
+          AND metrics.impressions > 0
+        ORDER BY metrics.conversions_value DESC
+      `,
 
-    // ENHANCED SEARCH TERMS (WORKING VERSION)
-    searchTermsIntelligence: `
-      SELECT 
-        search_term_view.search_term,
-        search_term_view.status,
-        campaign.name,
-        ad_group.name,
-        ad_group_criterion.keyword.text,
-        ad_group_criterion.keyword.match_type,
-        segments.date,
-        segments.device,
-        metrics.impressions,
-        metrics.clicks,
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.conversions_value,
-        metrics.ctr,
-        metrics.average_cpc
-      FROM search_term_view 
-      WHERE segments.date DURING ${dateRange}
-        AND metrics.impressions > 0
-      ORDER BY metrics.conversions_value DESC
-    `,
+      keywordIntelligence: `
+        SELECT 
+          campaign.name,
+          ad_group.name,
+          ad_group_criterion.keyword.text,
+          ad_group_criterion.keyword.match_type,
+          ad_group_criterion.status,
+          segments.date,
+          metrics.impressions,
+          metrics.clicks,
+          metrics.cost_micros,
+          metrics.conversions,
+          metrics.search_impression_share
+        FROM keyword_view 
+        WHERE segments.date DURING ${dateRange}
+          AND ad_group_criterion.status = 'ENABLED'
+          AND metrics.impressions > 0
+        ORDER BY metrics.cost_micros DESC
+      `,
 
-    // GEOGRAPHIC INTELLIGENCE (SIMPLIFIED)
-    locationIntelligence: `
-      SELECT 
-        campaign.name,
-        ad_group.name,
-        geographic_view.country_criterion_id,
-        geographic_view.location_type,
-        segments.geo_target_city,
-        segments.geo_target_region,
-        segments.date,
-        metrics.impressions,
-        metrics.clicks,
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.conversions_value,
-        metrics.ctr,
-        metrics.average_cpc
-      FROM geographic_view 
-      WHERE segments.date DURING ${dateRange}
-        AND metrics.impressions > 0
-      ORDER BY metrics.conversions_value DESC
-    `,
+      adIntelligence: `
+        SELECT 
+          campaign.name,
+          ad_group.name,
+          ad_group_ad.ad.id,
+          ad_group_ad.ad.type,
+          ad_group_ad.ad.expanded_text_ad.headline_part1,
+          ad_group_ad.ad.expanded_text_ad.headline_part2,
+          ad_group_ad.ad.expanded_text_ad.description,
+          ad_group_ad.status,
+          segments.date,
+          metrics.impressions,
+          metrics.clicks,
+          metrics.cost_micros,
+          metrics.conversions
+        FROM ad_group_ad 
+        WHERE segments.date DURING ${dateRange}
+          AND ad_group_ad.status = 'ENABLED'
+          AND metrics.impressions > 0
+        ORDER BY metrics.conversions DESC
+      `
+    };
 
-    // DEVICE & TIME ANALYSIS
-    deviceTimeIntelligence: `
-      SELECT 
-        campaign.name,
-        segments.date,
-        segments.day_of_week,
-        segments.hour,
-        segments.device,
-        metrics.impressions,
-        metrics.clicks,
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.conversions_value,
-        metrics.ctr,
-        metrics.average_cpc
-      FROM campaign 
-      WHERE segments.date DURING ${dateRange}
-        AND metrics.impressions > 0
-      ORDER BY segments.date DESC, segments.hour ASC
-    `,
-
-    // KEYWORD INTELLIGENCE (WORKING VERSION)
-    keywordIntelligence: `
-      SELECT 
-        campaign.name,
-        ad_group.name,
-        ad_group_criterion.keyword.text,
-        ad_group_criterion.keyword.match_type,
-        ad_group_criterion.quality_info.quality_score,
-        ad_group_criterion.status,
-        segments.date,
-        segments.device,
-        metrics.impressions,
-        metrics.clicks,
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.ctr,
-        metrics.average_cpc,
-        metrics.search_impression_share
-      FROM keyword_view 
-      WHERE segments.date DURING ${dateRange}
-        AND ad_group_criterion.status = 'ENABLED'
-        AND metrics.impressions > 0
-      ORDER BY metrics.cost_micros DESC
-    `,
-
-    // AD PERFORMANCE (WORKING VERSION)
-    adIntelligence: `
-      SELECT 
-        campaign.name,
-        ad_group.name,
-        ad_group_ad.ad.id,
-        ad_group_ad.ad.type,
-        ad_group_ad.ad.expanded_text_ad.headline_part1,
-        ad_group_ad.ad.expanded_text_ad.headline_part2,
-        ad_group_ad.ad.expanded_text_ad.description,
-        ad_group_ad.status,
-        segments.date,
-        segments.device,
-        metrics.impressions,
-        metrics.clicks,
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.ctr,
-        metrics.average_cpc
-      FROM ad_group_ad 
-      WHERE segments.date DURING ${dateRange}
-        AND ad_group_ad.status = 'ENABLED'
-        AND metrics.impressions > 0
-      ORDER BY metrics.conversions DESC
-    `
-  };
-
-  return queries[analysisType] || queries.campaignIntelligence;
-}
-
-  getDateDaysAgo(days) {
-    const date = new Date();
-    date.setDate(date.getDate() - days);
-    return date.toISOString().split('T')[0];
+    return queries[analysisType] || queries.campaignIntelligence;
   }
 
-  // Analysis helper methods
   static analyzeImpressionShare(campaignData) {
     const impressionShareMetrics = {
-      search: { total: 0, budget_lost: 0, rank_lost: 0, exact_match: 0 },
-      display: { total: 0, budget_lost: 0, rank_lost: 0 },
+      search: { total: 0, budget_lost: 0, rank_lost: 0 },
       overall: { campaigns: 0, avg_share: 0 }
     };
 
     let totalCampaigns = 0;
-    let totalImpressionShare = 0;
 
     campaignData.forEach(row => {
-      // Search impression share
       if (row.metrics?.search_impression_share) {
         impressionShareMetrics.search.total += row.metrics.search_impression_share;
         impressionShareMetrics.search.budget_lost += row.metrics?.search_budget_lost_impression_share || 0;
         impressionShareMetrics.search.rank_lost += row.metrics?.search_rank_lost_impression_share || 0;
-        impressionShareMetrics.search.exact_match += row.metrics?.search_exact_match_impression_share || 0;
-      }
-
-      // Display impression share  
-      if (row.metrics?.content_impression_share) {
-        impressionShareMetrics.display.total += row.metrics.content_impression_share;
-        impressionShareMetrics.display.budget_lost += row.metrics?.content_budget_lost_impression_share || 0;
-        impressionShareMetrics.display.rank_lost += row.metrics?.content_rank_lost_impression_share || 0;
-      }
-
-      // Overall metrics
-      if (row.metrics?.impression_share) {
-        totalImpressionShare += row.metrics.impression_share;
         totalCampaigns++;
       }
     });
 
     return {
       searchImpressionShare: {
-        avgShare: `${((impressionShareMetrics.search.total / campaignData.length) * 100).toFixed(1)}%`,
-        budgetLoss: `${((impressionShareMetrics.search.budget_lost / campaignData.length) * 100).toFixed(1)}%`,
-        rankLoss: `${((impressionShareMetrics.search.rank_lost / campaignData.length) * 100).toFixed(1)}%`,
-        exactMatchShare: `${((impressionShareMetrics.search.exact_match / campaignData.length) * 100).toFixed(1)}%`
+        avgShare: totalCampaigns > 0 ? `${((impressionShareMetrics.search.total / totalCampaigns) * 100).toFixed(1)}%` : '0%',
+        budgetLoss: totalCampaigns > 0 ? `${((impressionShareMetrics.search.budget_lost / totalCampaigns) * 100).toFixed(1)}%` : '0%',
+        rankLoss: totalCampaigns > 0 ? `${((impressionShareMetrics.search.rank_lost / totalCampaigns) * 100).toFixed(1)}%` : '0%'
       },
-      displayImpressionShare: {
-        avgShare: `${((impressionShareMetrics.display.total / campaignData.length) * 100).toFixed(1)}%`,
-        budgetLoss: `${((impressionShareMetrics.display.budget_lost / campaignData.length) * 100).toFixed(1)}%`,
-        rankLoss: `${((impressionShareMetrics.display.rank_lost / campaignData.length) * 100).toFixed(1)}%`
-      },
-      overallShare: totalCampaigns > 0 ? `${((totalImpressionShare / totalCampaigns) * 100).toFixed(1)}%` : '0%',
-      recommendations: this.generateImpressionShareRecommendations(impressionShareMetrics, campaignData.length)
+      recommendations: this.generateImpressionShareRecommendations(impressionShareMetrics, totalCampaigns)
     };
   }
 
   static generateImpressionShareRecommendations(metrics, campaignCount) {
     const recommendations = [];
+    
+    if (campaignCount === 0) return ['No impression share data available'];
     
     const avgBudgetLoss = (metrics.search.budget_lost / campaignCount) * 100;
     const avgRankLoss = (metrics.search.rank_lost / campaignCount) * 100;
@@ -446,42 +264,37 @@ buildQuery(analysisType, dateRange = 'LAST_30_DAYS', filters = {}) {
     return recommendations;
   }
 
-static analyzeNewCustomerLTV(ltvData) {
-  const customerSegments = {
-    new: { conversions: 0, value: 0, spend: 0 },
-    returning: { conversions: 0, value: 0, spend: 0 }
-  };
+  static analyzeNewCustomerLTV(ltvData) {
+    const customerSegments = {
+      new: { conversions: 0, value: 0, spend: 0 },
+      returning: { conversions: 0, value: 0, spend: 0 }
+    };
 
-  ltvData.forEach(row => {
-    const segment = row.segments?.new_versus_returning_customers === 'NEW' ? 'new' : 'returning';
-    
-    customerSegments[segment].conversions += row.metrics?.conversions || 0;
-    customerSegments[segment].value += row.metrics?.conversions_value || 0;
-    customerSegments[segment].spend += (row.metrics?.cost_micros || 0) / 1000000;
-  });
+    ltvData.forEach(row => {
+      const segment = row.segments?.new_versus_returning_customers === 'NEW' ? 'new' : 'returning';
+      
+      customerSegments[segment].conversions += row.metrics?.conversions || 0;
+      customerSegments[segment].value += row.metrics?.conversions_value || 0;
+      customerSegments[segment].spend += (row.metrics?.cost_micros || 0) / 1000000;
+    });
 
-  return {
-    newCustomers: {
-      ...customerSegments.new,
-      roas: customerSegments.new.spend > 0 ? 
-        (customerSegments.new.value / customerSegments.new.spend).toFixed(2) : '0',
-      avgOrderValue: customerSegments.new.conversions > 0 ? 
-        (customerSegments.new.value / customerSegments.new.conversions).toFixed(2) : '0'
-    },
-    returningCustomers: {
-      ...customerSegments.returning,
-      roas: customerSegments.returning.spend > 0 ? 
-        (customerSegments.returning.value / customerSegments.returning.spend).toFixed(2) : '0',
-      avgOrderValue: customerSegments.returning.conversions > 0 ? 
-        (customerSegments.returning.value / customerSegments.returning.conversions).toFixed(2) : '0'
-    },
-    insights: {
-      newVsReturningPerformance: customerSegments.new.conversions > 0 && customerSegments.returning.conversions > 0 ? 
-        `New customers have ${((customerSegments.new.value / customerSegments.new.conversions) / (customerSegments.returning.value / customerSegments.returning.conversions)).toFixed(1)}x AOV vs returning` : 
-        'Insufficient data for comparison'
-    }
-  };
-}
+    return {
+      newCustomers: {
+        ...customerSegments.new,
+        roas: customerSegments.new.spend > 0 ? 
+          (customerSegments.new.value / customerSegments.new.spend).toFixed(2) : '0',
+        avgOrderValue: customerSegments.new.conversions > 0 ? 
+          (customerSegments.new.value / customerSegments.new.conversions).toFixed(2) : '0'
+      },
+      returningCustomers: {
+        ...customerSegments.returning,
+        roas: customerSegments.returning.spend > 0 ? 
+          (customerSegments.returning.value / customerSegments.returning.spend).toFixed(2) : '0',
+        avgOrderValue: customerSegments.returning.conversions > 0 ? 
+          (customerSegments.returning.value / customerSegments.returning.conversions).toFixed(2) : '0'
+      }
+    };
+  }
 }
 
 // Initialize the enhanced intelligence engine
@@ -490,7 +303,6 @@ console.log('🧠 Enhanced Google Ads Intelligence Engine initialized');
 
 // ==================== MIDDLEWARE SETUP ====================
 
-// Enhanced CORS for ChatGPT and agency use
 app.use(cors({
   origin: [
     'https://chatgpt.com',
@@ -505,11 +317,10 @@ app.use(express.json());
 
 // ==================== HELPER FUNCTIONS ====================
 
-// Enhanced query executor with better error handling
 async function executeGAQLQuery(query, customerId) {
   try {
     const cleanCustomerId = customerId.replace(/[-\s]/g, '');
-    const managerCustomerId = '5672864299'; // Your manager account
+    const managerCustomerId = '5672864299';
     
     let customerConfig;
     if (cleanCustomerId === managerCustomerId) {
@@ -535,7 +346,6 @@ async function executeGAQLQuery(query, customerId) {
     
   } catch (error) {
     console.error(`Query failed for customer ${customerId}:`, error);
-    console.error('Full error object:', JSON.stringify(error, null, 2));
     return {
       success: false,
       error: error.message,
@@ -544,7 +354,6 @@ async function executeGAQLQuery(query, customerId) {
   }
 }
 
-// Status converter
 function getStatusText(status) {
   switch(status) {
     case 2: return 'ENABLED';
@@ -554,24 +363,18 @@ function getStatusText(status) {
   }
 }
 
-// Date range validator for agency use
 function validateDateRange(period) {
   const validRanges = [
     'LAST_7_DAYS', 'LAST_14_DAYS', 'LAST_30_DAYS', 'LAST_90_DAYS',
     'THIS_MONTH', 'LAST_MONTH', 'THIS_QUARTER', 'LAST_QUARTER',
-    'THIS_YEAR', 'LAST_YEAR', 'ALL_TIME'
+    'THIS_YEAR', 'LAST_YEAR'
   ];
-  
-  // Fix common mistakes
-  if (period === 'LAST_90_DAYS') return 'THIS_QUARTER'; // Closest valid equivalent
-  if (period === 'ALL_TIME') return 'THIS_YEAR'; // Use current year for "all time"
   
   return validRanges.includes(period) ? period : 'LAST_30_DAYS';
 }
 
 // ==================== BASIC ROUTES ====================
 
-// Health check
 app.get('/api/test', (req, res) => {
   res.json({ 
     message: 'Agency Google Ads API Server is running!',
@@ -584,13 +387,11 @@ app.get('/api/test', (req, res) => {
       'GET /api/chatgpt/keyword-analysis/:id - Keyword gap analysis',
       'GET /api/chatgpt/search-terms/:id - Search terms mining',
       'GET /api/chatgpt/ad-copy-analysis/:id - Ad copy performance',
-      'GET /api/chatgpt/quality-score/:id - Quality Score analysis',
-      'POST /api/execute-query - Custom GAQL queries'
+      'GET /api/chatgpt/quality-score/:id - Quality Score analysis'
     ]
   });
 });
 
-// Legacy query executor (for your existing frontend)
 app.post('/api/execute-query', async (req, res) => {
   try {
     const { query, customerId } = req.body;
@@ -629,14 +430,12 @@ app.post('/api/execute-query', async (req, res) => {
 
 // ==================== CHATGPT INTEGRATION ROUTES ====================
 
-// Enhanced: Get ALL your MCC accounts (with fixed error handling)
 app.get('/api/chatgpt/accounts', async (req, res) => {
   try {
     console.log('ChatGPT requested account list - loading all MCC accounts');
     
-    // ALL your actual account IDs from MCC + manager account
     const knownAccounts = [
-      '567-286-4299',    // Your manager account (MCC)
+      '567-286-4299',
       '852-070-8211',
       '998-480-7723',
       '498-931-0941',
@@ -655,15 +454,13 @@ app.get('/api/chatgpt/accounts', async (req, res) => {
       '291-914-6712',
       '148-160-0039',
       '464-650-0984',
-      '494-589-7843',    // Your main test account
+      '494-589-7843',
       '146-144-1066',
       '211-951-9725'
     ];
     
     const accountDetails = [];
     let successCount = 0;
-    
-    console.log(`Processing ${knownAccounts.length} accounts...`);
     
     for (const accountId of knownAccounts) {
       try {
@@ -686,7 +483,6 @@ app.get('/api/chatgpt/accounts', async (req, res) => {
         
         const customer = client.Customer(customerConfig);
         
-        // Get customer details
         const customerQuery = `
           SELECT 
             customer.id,
@@ -703,7 +499,6 @@ app.get('/api/chatgpt/accounts', async (req, res) => {
         if (customerInfo && customerInfo.length > 0) {
           const info = customerInfo[0].customer;
           
-          // Get campaign count and recent spend
           const campaignQuery = `
             SELECT 
               campaign.id,
@@ -749,10 +544,8 @@ app.get('/api/chatgpt/accounts', async (req, res) => {
       } catch (accountError) {
         console.log(`⚠️ Cannot access account ${accountId}:`, accountError);
         
-        // Fixed error handling
         const errorMessage = accountError?.message || accountError?.toString() || 'Unknown error';
         
-        // Add basic info for inaccessible accounts
         accountDetails.push({
           id: accountId,
           name: `Account ${accountId}`,
@@ -769,14 +562,13 @@ app.get('/api/chatgpt/accounts', async (req, res) => {
       }
     }
     
-    // Sort accounts - manager first, then by monthly spend (highest first)
     accountDetails.sort((a, b) => {
       if (a.type === 'manager' && b.type !== 'manager') return -1;
       if (b.type === 'manager' && a.type !== 'manager') return 1;
       
       const spendA = parseFloat(a.monthlySpend.replace('$', ''));
       const spendB = parseFloat(b.monthlySpend.replace('$', ''));
-      return spendB - spendA; // Highest spend first
+      return spendB - spendA;
     });
     
     const totalSpend = accountDetails
@@ -793,8 +585,7 @@ app.get('/api/chatgpt/accounts', async (req, res) => {
         totalMonthlySpend: `$${totalSpend.toFixed(2)}`,
         managedClients: accountDetails.filter(a => a.type === 'client' && a.status === 'accessible').length
       },
-      message: `Loaded ${successCount}/${knownAccounts.length} accounts from your MCC`,
-      note: "Accounts sorted by monthly spend (highest first)"
+      message: `Loaded ${successCount}/${knownAccounts.length} accounts from your MCC`
     });
     
   } catch (error) {
@@ -806,7 +597,6 @@ app.get('/api/chatgpt/accounts', async (req, res) => {
   }
 });
 
-// 2. Comprehensive account overview with flexible date ranges
 app.get('/api/chatgpt/account/:accountId', async (req, res) => {
   try {
     const { accountId } = req.params;
@@ -839,7 +629,6 @@ app.get('/api/chatgpt/account/:accountId', async (req, res) => {
     
     const campaignData = result.data;
     
-    // Calculate comprehensive metrics
     const totalClicks = campaignData.reduce((sum, row) => sum + (row.metrics?.clicks || 0), 0);
     const totalImpressions = campaignData.reduce((sum, row) => sum + (row.metrics?.impressions || 0), 0);
     const totalCost = campaignData.reduce((sum, row) => sum + (row.metrics?.cost_micros || 0), 0) / 1000000;
@@ -888,7 +677,6 @@ app.get('/api/chatgpt/account/:accountId', async (req, res) => {
   }
 });
 
-// 3. Flexible metrics with multiple date range support
 app.get('/api/chatgpt/metrics', async (req, res) => {
   try {
     const { accountId = "494-589-7843", period = "LAST_30_DAYS" } = req.query;
@@ -922,10 +710,10 @@ app.get('/api/chatgpt/metrics', async (req, res) => {
       status: getStatusText(row.campaign?.status),
       clicks: row.metrics?.clicks || 0,
       impressions: row.metrics?.impressions || 0,
-      spend: `${((row.metrics?.cost_micros || 0) / 1000000).toFixed(2)}`,
+      spend: `$${((row.metrics?.cost_micros || 0) / 1000000).toFixed(2)}`,
       conversions: row.metrics?.conversions || 0,
       ctr: `${((row.metrics?.ctr || 0) * 100).toFixed(2)}%`,
-      cpc: `${((row.metrics?.average_cpc || 0) / 1000000).toFixed(2)}`,
+      cpc: `$${((row.metrics?.average_cpc || 0) / 1000000).toFixed(2)}`,
       conversionRate: `${((row.metrics?.clicks || 0) > 0 ? ((row.metrics?.conversions || 0) / (row.metrics?.clicks || 0) * 100).toFixed(2) : '0.00')}%`
     }));
     
@@ -946,27 +734,24 @@ app.get('/api/chatgpt/metrics', async (req, res) => {
   }
 });
 
-// 4. SMART Statistical analysis
 app.get('/api/chatgpt/analysis/:accountId', async (req, res) => {
   try {
     const { accountId } = req.params;
     const { period = 'LAST_30_DAYS', confidenceLevel = '90' } = req.query;
     const validPeriod = validateDateRange(period);
     
-    console.log(`Smart analysis requested: ${accountId}, period: ${validPeriod}, confidence: ${confidenceLevel}%`);
+    console.log(`Smart analysis requested: ${accountId}, period: ${validPeriod}`);
     
     const analysisQuery = `
       SELECT 
         campaign.name,
         segments.date,
         segments.day_of_week,
-        segments.hour,
         segments.device,
         metrics.clicks,
         metrics.impressions,
         metrics.cost_micros,
-        metrics.conversions,
-        metrics.ctr
+        metrics.conversions
       FROM campaign 
       WHERE segments.date DURING ${validPeriod}
         AND metrics.impressions > 0
@@ -979,10 +764,8 @@ app.get('/api/chatgpt/analysis/:accountId', async (req, res) => {
       return res.status(500).json(result);
     }
     
-    // Smart analysis with conditional insights
     const dayPerformance = {};
     const devicePerformance = {};
-    const hourPerformance = {};
     let totalSpend = 0;
     let totalConversions = 0;
     let totalClicks = 0;
@@ -990,61 +773,40 @@ app.get('/api/chatgpt/analysis/:accountId', async (req, res) => {
     result.data.forEach(row => {
       const day = row.segments?.day_of_week || 'UNKNOWN';
       const device = row.segments?.device || 'UNKNOWN';
-      const hour = row.segments?.hour || 'UNKNOWN';
       const spend = (row.metrics?.cost_micros || 0) / 1000000;
       const conversions = row.metrics?.conversions || 0;
       const clicks = row.metrics?.clicks || 0;
-      const impressions = row.metrics?.impressions || 0;
       
       totalSpend += spend;
       totalConversions += conversions;
       totalClicks += clicks;
       
-      // Day analysis
       if (!dayPerformance[day]) {
-        dayPerformance[day] = { spend: 0, conversions: 0, clicks: 0, impressions: 0, sessions: 0 };
+        dayPerformance[day] = { spend: 0, conversions: 0, clicks: 0, sessions: 0 };
       }
       dayPerformance[day].spend += spend;
       dayPerformance[day].conversions += conversions;
       dayPerformance[day].clicks += clicks;
-      dayPerformance[day].impressions += impressions;
       dayPerformance[day].sessions += 1;
       
-      // Device analysis
       if (!devicePerformance[device]) {
-        devicePerformance[device] = { spend: 0, conversions: 0, clicks: 0, impressions: 0, sessions: 0 };
+        devicePerformance[device] = { spend: 0, conversions: 0, clicks: 0, sessions: 0 };
       }
       devicePerformance[device].spend += spend;
       devicePerformance[device].conversions += conversions;
       devicePerformance[device].clicks += clicks;
-      devicePerformance[device].impressions += impressions;
       devicePerformance[device].sessions += 1;
-      
-      // Hour analysis
-      if (!hourPerformance[hour]) {
-        hourPerformance[hour] = { spend: 0, conversions: 0, clicks: 0, sessions: 0 };
-      }
-      hourPerformance[hour].spend += spend;
-      hourPerformance[hour].conversions += conversions;
-      hourPerformance[hour].clicks += clicks;
-      hourPerformance[hour].sessions += 1;
     });
     
-    // SMART INSIGHTS - Only suggest what's actually needed
     const insights = [];
     const accountAvgConversionRate = totalClicks > 0 ? totalConversions / totalClicks : 0;
-    const accountAvgCPC = totalClicks > 0 ? totalSpend / totalClicks : 0;
     
-    // Add insights based on actual data patterns
     if (totalSpend > 1000 && accountAvgConversionRate < 0.01) {
       insights.push({
         type: 'Conversion Rate Optimization',
         priority: 'High',
-        description: `Conversion rate of ${(accountAvgConversionRate * 100).toFixed(2)}% is critically low for ${totalSpend.toFixed(0)} monthly spend.`,
-        impact: `Doubling conversion rate would double ROI`,
-        confidence: `95%`,
-        action: `Audit landing pages, improve page speed, and test clearer CTAs`,
-        urgency: `Critical - high spend with poor conversions`
+        description: `Conversion rate of ${(accountAvgConversionRate * 100).toFixed(2)}% is critically low for $${totalSpend.toFixed(0)} monthly spend.`,
+        action: 'Audit landing pages, improve page speed, and test clearer CTAs'
       });
     }
     
@@ -1052,38 +814,30 @@ app.get('/api/chatgpt/analysis/:accountId', async (req, res) => {
       success: true,
       accountId: accountId,
       period: validPeriod,
-      confidenceLevel: `${confidenceLevel}%`,
       analysis: {
         summary: {
-          totalSpend: `${totalSpend.toFixed(2)}`,
+          totalSpend: `$${totalSpend.toFixed(2)}`,
           totalConversions: totalConversions,
-          overallConversionRate: `${(accountAvgConversionRate * 100).toFixed(2)}%`,
-          avgCPC: `${accountAvgCPC.toFixed(2)}`,
-          dataQuality: result.data.length > 100 ? 'High' : result.data.length > 30 ? 'Medium' : 'Low'
+          overallConversionRate: `${(accountAvgConversionRate * 100).toFixed(2)}%`
         },
         dayOfWeekPerformance: dayPerformance,
         devicePerformance: devicePerformance,
-        hourlyPerformance: hourPerformance,
         insights: insights,
-        totalDataPoints: result.data.length,
-        analysisDate: new Date().toISOString()
+        totalDataPoints: result.data.length
       }
     });
     
   } catch (error) {
-    console.error('Error in smart statistical analysis:', error);
+    console.error('Error in analysis:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// 5. Keyword gap analysis
 app.get('/api/chatgpt/keyword-analysis/:accountId', async (req, res) => {
   try {
     const { accountId } = req.params;
     const { period = 'LAST_30_DAYS' } = req.query;
     const validPeriod = validateDateRange(period);
-    
-    console.log(`Keyword analysis requested: ${accountId}, period: ${validPeriod}`);
     
     const keywordQuery = `
       SELECT 
@@ -1094,9 +848,7 @@ app.get('/api/chatgpt/keyword-analysis/:accountId', async (req, res) => {
         metrics.clicks,
         metrics.impressions,
         metrics.cost_micros,
-        metrics.conversions,
-        metrics.ctr,
-        metrics.search_impression_share
+        metrics.conversions
       FROM keyword_view 
       WHERE segments.date DURING ${validPeriod}
         AND ad_group_criterion.status = 'ENABLED'
@@ -1115,17 +867,12 @@ app.get('/api/chatgpt/keyword-analysis/:accountId', async (req, res) => {
       keyword: kw.ad_group_criterion?.keyword?.text,
       matchType: kw.ad_group_criterion?.keyword?.match_type,
       campaign: kw.campaign?.name,
-      adGroup: kw.ad_group?.name,
       spend: (kw.metrics?.cost_micros || 0) / 1000000,
       conversions: kw.metrics?.conversions || 0,
       clicks: kw.metrics?.clicks || 0,
-      impressions: kw.metrics?.impressions || 0,
-      ctr: (kw.metrics?.ctr || 0) * 100,
-      impressionShare: (kw.metrics?.search_impression_share || 0) * 100,
       conversionRate: (kw.metrics?.clicks || 0) > 0 ? (kw.metrics?.conversions || 0) / (kw.metrics?.clicks || 0) * 100 : 0
     }));
     
-    // Advanced keyword analysis
     const topPerformers = keywords
       .filter(kw => kw.conversionRate > 2 && kw.spend > 50)
       .sort((a, b) => b.conversionRate - a.conversionRate)
@@ -1136,11 +883,6 @@ app.get('/api/chatgpt/keyword-analysis/:accountId', async (req, res) => {
       .sort((a, b) => b.spend - a.spend)
       .slice(0, 15);
     
-    const expansionOpportunities = keywords
-      .filter(kw => kw.impressionShare > 50 && kw.conversionRate > 1 && kw.spend < 1000)
-      .sort((a, b) => b.conversionRate - a.conversionRate)
-      .slice(0, 15);
-    
     res.json({
       success: true,
       accountId: accountId,
@@ -1148,8 +890,7 @@ app.get('/api/chatgpt/keyword-analysis/:accountId', async (req, res) => {
       keywordAnalysis: {
         totalKeywords: keywords.length,
         topPerformers: topPerformers,
-        underperformers: underperformers,
-        expansionOpportunities: expansionOpportunities
+        underperformers: underperformers
       }
     });
     
@@ -1159,23 +900,18 @@ app.get('/api/chatgpt/keyword-analysis/:accountId', async (req, res) => {
   }
 });
 
-// 6. Search terms mining
 app.get('/api/chatgpt/search-terms/:accountId', async (req, res) => {
   try {
     const { accountId } = req.params;
     const { period = 'LAST_30_DAYS' } = req.query;
     const validPeriod = validateDateRange(period);
     
-    console.log(`Search terms analysis requested: ${accountId}, period: ${validPeriod}`);
-    
     const searchTermsQuery = `
       SELECT 
         search_term_view.search_term,
-        search_term_view.status,
         campaign.name,
         ad_group.name,
         ad_group_criterion.keyword.text,
-        ad_group_criterion.keyword.match_type,
         metrics.clicks,
         metrics.impressions,
         metrics.cost_micros,
@@ -1203,37 +939,28 @@ app.get('/api/chatgpt/search-terms/:accountId', async (req, res) => {
       const spend = (term.metrics?.cost_micros || 0) / 1000000;
       const conversionRate = clicks > 0 ? conversions / clicks * 100 : 0;
       
-      // High-value search terms for new keywords
       if (conversionRate > 2 && clicks > 3 && spend > 10) {
         newKeywordOpportunities.push({
           searchTerm: searchTerm,
           triggeringKeyword: term.ad_group_criterion?.keyword?.text,
-          matchType: term.ad_group_criterion?.keyword?.match_type,
           conversions: conversions,
-          conversionRate: `${conversionRate.toFixed(2)}%`,
-          spend: `${spend.toFixed(2)}`,
-          recommendation: 'Add as exact match keyword',
-          priority: conversionRate > 5 ? 'High' : 'Medium'
+          spend: spend.toFixed(2),
+          recommendation: 'Add as exact match keyword'
         });
       }
       
-      // Negative keyword opportunities
       if (spend > 20 && conversions === 0 && clicks > 3) {
         negativeKeywordRecommendations.push({
           searchTerm: searchTerm,
-          triggeringKeyword: term.ad_group_criterion?.keyword?.text,
-          wastedSpend: `${spend.toFixed(2)}`,
+          wastedSpend: spend.toFixed(2),
           clicks: clicks,
-          recommendation: 'Add as negative keyword',
-          priority: spend > 100 ? 'High' : 'Medium'
+          recommendation: 'Add as negative keyword'
         });
       }
     });
     
     const totalWastedSpend = negativeKeywordRecommendations.reduce((sum, item) => 
-      sum + parseFloat(item.wastedSpend.replace('
-, '')), 0
-    );
+      sum + parseFloat(item.wastedSpend), 0);
     
     res.json({
       success: true,
@@ -1243,9 +970,7 @@ app.get('/api/chatgpt/search-terms/:accountId', async (req, res) => {
         totalSearchTerms: result.data.length,
         newKeywordOpportunities: newKeywordOpportunities.slice(0, 20),
         negativeKeywordRecommendations: negativeKeywordRecommendations.slice(0, 20),
-        potentialSavings: `${totalWastedSpend.toFixed(2)}`,
-        potentialRevenue: `${newKeywordOpportunities.reduce((sum, item) => sum + parseFloat(item.spend.replace('
-, '')), 0).toFixed(2)}`
+        potentialSavings: `$${totalWastedSpend.toFixed(2)}`
       }
     });
     
@@ -1255,14 +980,11 @@ app.get('/api/chatgpt/search-terms/:accountId', async (req, res) => {
   }
 });
 
-// 7. Ad copy performance analysis
 app.get('/api/chatgpt/ad-copy-analysis/:accountId', async (req, res) => {
   try {
     const { accountId } = req.params;
     const { period = 'LAST_30_DAYS' } = req.query;
     const validPeriod = validateDateRange(period);
-    
-    console.log(`Ad copy analysis requested: ${accountId}, period: ${validPeriod}`);
     
     const adCopyQuery = `
       SELECT 
@@ -1271,19 +993,16 @@ app.get('/api/chatgpt/ad-copy-analysis/:accountId', async (req, res) => {
         ad_group_ad.ad.expanded_text_ad.headline_part1,
         ad_group_ad.ad.expanded_text_ad.headline_part2,
         ad_group_ad.ad.expanded_text_ad.description,
-        ad_group_ad.ad.responsive_search_ad.headlines,
-        ad_group_ad.ad.responsive_search_ad.descriptions,
         ad_group_ad.status,
         metrics.clicks,
         metrics.impressions,
         metrics.cost_micros,
-        metrics.conversions,
-        metrics.ctr
+        metrics.conversions
       FROM ad_group_ad 
       WHERE segments.date DURING ${validPeriod}
         AND ad_group_ad.status = 'ENABLED'
         AND metrics.impressions > 0
-      ORDER BY metrics.conversions DESC, metrics.clicks DESC
+      ORDER BY metrics.conversions DESC
       LIMIT 100
     `;
     
@@ -1295,26 +1014,18 @@ app.get('/api/chatgpt/ad-copy-analysis/:accountId', async (req, res) => {
     
     const adAnalysis = result.data.map(ad => {
       const clicks = ad.metrics?.clicks || 0;
-      const impressions = ad.metrics?.impressions || 0;
       const conversions = ad.metrics?.conversions || 0;
       const spend = (ad.metrics?.cost_micros || 0) / 1000000;
-      
-      // Extract headlines and descriptions
-      let headlines = [];
-      let descriptions = [];
-      
-      if (ad.ad_group_ad?.ad?.expanded_text_ad) {
-        headlines = [
-          ad.ad_group_ad.ad.expanded_text_ad.headline_part1,
-          ad.ad_group_ad.ad.expanded_text_ad.headline_part2
-        ].filter(h => h);
-        descriptions = [ad.ad_group_ad.ad.expanded_text_ad.description].filter(d => d);
-      } else if (ad.ad_group_ad?.ad?.responsive_search_ad) {
-        headlines = (ad.ad_group_ad.ad.responsive_search_ad.headlines || []).map(h => h.text).slice(0, 3);
-        descriptions = (ad.ad_group_ad.ad.responsive_search_ad.descriptions || []).map(d => d.text).slice(0, 2);
-      }
-      
       const conversionRate = clicks > 0 ? (conversions / clicks * 100) : 0;
+      
+      const headlines = [
+        ad.ad_group_ad?.ad?.expanded_text_ad?.headline_part1,
+        ad.ad_group_ad?.ad?.expanded_text_ad?.headline_part2
+      ].filter(h => h);
+      
+      const descriptions = [
+        ad.ad_group_ad?.ad?.expanded_text_ad?.description
+      ].filter(d => d);
       
       return {
         campaign: ad.campaign?.name,
@@ -1323,12 +1034,9 @@ app.get('/api/chatgpt/ad-copy-analysis/:accountId', async (req, res) => {
         descriptions: descriptions,
         performance: {
           clicks: clicks,
-          impressions: impressions,
           conversions: conversions,
-          spend: `${spend.toFixed(2)}`,
-          ctr: `${((ad.metrics?.ctr || 0) * 100).toFixed(2)}%`,
-          conversionRate: `${conversionRate.toFixed(2)}%`,
-          costPerConversion: conversions > 0 ? `${(spend / conversions).toFixed(2)}` : 'N/A'
+          spend: spend.toFixed(2),
+          conversionRate: conversionRate.toFixed(2)
         }
       };
     });
@@ -1338,14 +1046,6 @@ app.get('/api/chatgpt/ad-copy-analysis/:accountId', async (req, res) => {
       .sort((a, b) => parseFloat(b.performance.conversionRate) - parseFloat(a.performance.conversionRate))
       .slice(0, 10);
     
-    const lowPerformers = adAnalysis
-      .filter(ad => parseFloat(ad.performance.spend.replace('
-, '')) > 50 && ad.performance.conversions === 0)
-      .sort((a, b) => parseFloat(b.performance.spend.replace('
-, '')) - parseFloat(a.performance.spend.replace('
-, '')))
-      .slice(0, 10);
-    
     res.json({
       success: true,
       accountId: accountId,
@@ -1353,11 +1053,10 @@ app.get('/api/chatgpt/ad-copy-analysis/:accountId', async (req, res) => {
       analysis: {
         totalAds: adAnalysis.length,
         topPerformers: topPerformers,
-        lowPerformers: lowPerformers,
         copyRecommendations: [
-          "Test emotional headlines (save, free, guaranteed) on low-performing ads",
-          "Add urgency elements ('Today Only', 'Limited Time') to increase CTR",
-          "Include specific benefits and numbers in descriptions"
+          "Test emotional headlines on low-performing ads",
+          "Add urgency elements to increase CTR",
+          "Include specific benefits in descriptions"
         ]
       }
     });
@@ -1368,41 +1067,92 @@ app.get('/api/chatgpt/ad-copy-analysis/:accountId', async (req, res) => {
   }
 });
 
-// Quality Score analysis and other routes would go here...
-// [Additional routes for Quality Score, AI Learning, etc.]
-
-function generateQSRecommendations(qualityInfo) {
-  const recommendations = [];
-  
-  if (qualityInfo.creative_quality_score === 'BELOW_AVERAGE') {
-    recommendations.push('Improve ad relevance - include target keyword in headline');
+app.get('/api/chatgpt/quality-score/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    
+    const qualityScoreQuery = `
+      SELECT 
+        campaign.name,
+        ad_group.name,
+        ad_group_criterion.keyword.text,
+        ad_group_criterion.quality_info.quality_score,
+        metrics.clicks,
+        metrics.cost_micros
+      FROM keyword_view 
+      WHERE segments.date DURING LAST_30_DAYS
+        AND ad_group_criterion.status = 'ENABLED'
+        AND metrics.impressions > 0
+      ORDER BY ad_group_criterion.quality_info.quality_score ASC
+      LIMIT 100
+    `;
+    
+    const result = await executeGAQLQuery(qualityScoreQuery, accountId);
+    
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+    
+    const validKeywords = result.data.filter(kw => kw.ad_group_criterion?.quality_info?.quality_score);
+    
+    if (validKeywords.length === 0) {
+      return res.json({ 
+        success: true,
+        message: "No Quality Score data available",
+        accountId: accountId
+      });
+    }
+    
+    const qualityScores = validKeywords.map(kw => kw.ad_group_criterion.quality_info.quality_score);
+    const avgQualityScore = qualityScores.reduce((sum, qs) => sum + qs, 0) / qualityScores.length;
+    
+    const lowQualityKeywords = validKeywords
+      .filter(kw => kw.ad_group_criterion.quality_info.quality_score <= 5)
+      .map(kw => ({
+        keyword: kw.ad_group_criterion?.keyword?.text,
+        campaign: kw.campaign?.name,
+        qualityScore: kw.ad_group_criterion.quality_info.quality_score,
+        spend: ((kw.metrics?.cost_micros || 0) / 1000000).toFixed(2)
+      }))
+      .sort((a, b) => parseFloat(b.spend) - parseFloat(a.spend))
+      .slice(0, 20);
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      qualityScoreAnalysis: {
+        summary: {
+          averageQualityScore: avgQualityScore.toFixed(1),
+          totalKeywords: validKeywords.length,
+          lowQualityCount: lowQualityKeywords.length
+        },
+        lowQualityKeywords: lowQualityKeywords,
+        recommendations: [
+          "Focus on keywords with QS ≤5 and high spend first",
+          "Improve ad relevance by including target keywords in headlines",
+          "Optimize landing pages for mobile experience and speed"
+        ]
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in Quality Score analysis:', error);
+    res.status(500).json({ error: error.message });
   }
-  if (qualityInfo.post_click_quality_score === 'BELOW_AVERAGE') {
-    recommendations.push('Optimize landing page relevance and mobile experience');
-  }
-  if (qualityInfo.search_predicted_ctr === 'BELOW_AVERAGE') {
-    recommendations.push('Improve expected CTR through better ad copy and extensions');
-  }
-  
-  return recommendations.length > 0 ? recommendations : ['Monitor performance and continue testing'];
-}
+});
 
 // ==================== AI LEARNING ROUTES ====================
 
-// Store a recommendation
 app.post('/api/ai/store-recommendation', async (req, res) => {
   try {
     const { accountId, recommendation } = req.body;
-    
-    console.log(`🤖 GPT made recommendation for ${accountId}:`, recommendation);
     
     const recommendationId = await aiMemory.storeRecommendation(accountId, recommendation);
     
     res.json({
       success: true,
       recommendationId: recommendationId,
-      message: `Recommendation stored. I'll learn from the results!`,
-      nextSteps: `Monitor performance for 30 days, then update me with results`
+      message: 'Recommendation stored successfully'
     });
     
   } catch (error) {
@@ -1411,7 +1161,6 @@ app.post('/api/ai/store-recommendation', async (req, res) => {
   }
 });
 
-// Get AI insights
 app.get('/api/ai/insights/:accountId', async (req, res) => {
   try {
     const { accountId } = req.params;
@@ -1420,22 +1169,67 @@ app.get('/api/ai/insights/:accountId', async (req, res) => {
     res.json({
       success: true,
       accountId: accountId,
-      aiInsights: {
-        myLearningProgress: {
-          totalRecommendationsMade: insights.totalRecommendations,
-          overallSuccessRate: `${(insights.overallSuccessRate * 100).toFixed(1)}%`,
-          confidenceLevel: insights.overallSuccessRate > 0.7 ? 'High' : 
-                          insights.overallSuccessRate > 0.4 ? 'Medium' : 'Learning'
-        },
-        whatIveLearnedWorks: insights.bestPractices,
-        whatIveLearnedToAvoid: insights.thingsToAvoid,
-        highConfidenceStrategies: insights.successfulPatterns.map(p => p.type),
-        needMoreDataOn: insights.riskyPatterns.map(p => p.type)
-      }
+      aiInsights: insights
     });
     
   } catch (error) {
     console.error('Error getting AI insights:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== ENHANCED ANALYSIS ENDPOINTS ====================
+
+app.get('/api/intelligence/impression-share/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { period = 'LAST_30_DAYS' } = req.query;
+    
+    const impressionShareQuery = intelligenceEngine.buildQuery('impressionShareIntelligence', period);
+    const result = await executeGAQLQuery(impressionShareQuery, accountId);
+    
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+
+    const impressionShareAnalysis = GoogleAdsIntelligenceEngine.analyzeImpressionShare(result.data);
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      period: period,
+      impressionShareIntelligence: impressionShareAnalysis
+    });
+
+  } catch (error) {
+    console.error('Error in impression share analysis:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/intelligence/customer-ltv/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { period = 'LAST_30_DAYS' } = req.query;
+    
+    const ltvQuery = intelligenceEngine.buildQuery('customerLifetimeValueIntelligence', period);
+    const result = await executeGAQLQuery(ltvQuery, accountId);
+    
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+
+    const ltvAnalysis = GoogleAdsIntelligenceEngine.analyzeNewCustomerLTV(result.data);
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      period: period,
+      customerLTVIntelligence: ltvAnalysis
+    });
+
+  } catch (error) {
+    console.error('Error in customer LTV analysis:', error);
     res.status(500).json({ error: error.message });
   }
 });
