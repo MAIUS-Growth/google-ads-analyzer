@@ -387,7 +387,16 @@ app.get('/api/test', (req, res) => {
       'GET /api/chatgpt/keyword-analysis/:id - Keyword gap analysis',
       'GET /api/chatgpt/search-terms/:id - Search terms mining',
       'GET /api/chatgpt/ad-copy-analysis/:id - Ad copy performance',
-      'GET /api/chatgpt/quality-score/:id - Quality Score analysis'
+      'GET /api/chatgpt/quality-score/:id - Quality Score analysis',
+      'GET /api/intelligence/shopping-analysis/:id - Shopping campaign analysis',
+      'GET /api/intelligence/performance-max/:id - Performance Max analysis',
+      'GET /api/intelligence/impression-share/:id - Impression share analysis',
+      'GET /api/intelligence/customer-ltv/:id - Customer lifetime value analysis',
+      'GET /api/chatgpt/smart-analysis/:id - AI-powered smart analysis',
+      'GET /api/ai/insights/:id - AI learning insights',
+      'GET /api/ai/learning-dashboard - AI learning dashboard',
+      'POST /api/ai/store-recommendation - Store AI recommendation',
+      'POST /api/execute-query - Custom GAQL queries'
     ]
   });
 });
@@ -1231,6 +1240,355 @@ app.get('/api/intelligence/customer-ltv/:accountId', async (req, res) => {
   } catch (error) {
     console.error('Error in customer LTV analysis:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// SHOPPING CAMPAIGN ANALYSIS (The missing endpoint!)
+app.get('/api/intelligence/shopping-analysis/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { period = 'LAST_30_DAYS' } = req.query;
+    
+    console.log(`🛒 Shopping analysis requested: ${accountId}, period: ${period}`);
+    
+    const shoppingQuery = intelligenceEngine.buildQuery('shoppingIntelligence', period);
+    const result = await executeGAQLQuery(shoppingQuery, accountId);
+    
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        error: result.error,
+        message: 'Shopping analysis failed - this could be due to no shopping campaigns or API access issues'
+      });
+    }
+
+    if (result.data.length === 0) {
+      return res.json({
+        success: true,
+        accountId: accountId,
+        period: period,
+        message: 'No shopping campaign data found for this account',
+        shoppingIntelligence: {
+          totalProducts: 0,
+          categoryPerformance: [],
+          brandPerformance: [],
+          topProducts: [],
+          recommendations: ['No shopping campaigns detected in this account']
+        }
+      });
+    }
+
+    // Analyze shopping data
+    const categories = {};
+    const brands = {};
+    const products = {};
+
+    result.data.forEach(row => {
+      const category = row.segments?.product_category_level1 || 'Unknown';
+      const brand = row.segments?.product_brand || 'Unknown';
+      const productId = row.segments?.product_item_id || 'Unknown';
+      const productTitle = row.segments?.product_title || 'Unknown Product';
+
+      // Category analysis
+      if (!categories[category]) {
+        categories[category] = { impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0 };
+      }
+      categories[category].impressions += row.metrics?.impressions || 0;
+      categories[category].clicks += row.metrics?.clicks || 0;
+      categories[category].conversions += row.metrics?.conversions || 0;
+      categories[category].spend += (row.metrics?.cost_micros || 0) / 1000000;
+      categories[category].revenue += row.metrics?.conversions_value || 0;
+
+      // Brand analysis
+      if (!brands[brand]) {
+        brands[brand] = { impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0 };
+      }
+      brands[brand].impressions += row.metrics?.impressions || 0;
+      brands[brand].clicks += row.metrics?.clicks || 0;
+      brands[brand].conversions += row.metrics?.conversions || 0;
+      brands[brand].spend += (row.metrics?.cost_micros || 0) / 1000000;
+      brands[brand].revenue += row.metrics?.conversions_value || 0;
+
+      // Product analysis
+      if (!products[productId]) {
+        products[productId] = {
+          title: productTitle,
+          impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0
+        };
+      }
+      products[productId].impressions += row.metrics?.impressions || 0;
+      products[productId].clicks += row.metrics?.clicks || 0;
+      products[productId].conversions += row.metrics?.conversions || 0;
+      products[productId].spend += (row.metrics?.cost_micros || 0) / 1000000;
+      products[productId].revenue += row.metrics?.conversions_value || 0;
+    });
+
+    const shoppingAnalysis = {
+      totalProducts: Object.keys(products).length,
+      categoryPerformance: Object.keys(categories).map(cat => ({
+        category: cat,
+        ...categories[cat],
+        roas: categories[cat].spend > 0 ? (categories[cat].revenue / categories[cat].spend).toFixed(2) : '0',
+        conversionRate: categories[cat].clicks > 0 ? ((categories[cat].conversions / categories[cat].clicks) * 100).toFixed(2) + '%' : '0%'
+      })).sort((a, b) => parseFloat(b.roas) - parseFloat(a.roas)).slice(0, 10),
+      
+      brandPerformance: Object.keys(brands).map(brand => ({
+        brand: brand,
+        ...brands[brand],
+        roas: brands[brand].spend > 0 ? (brands[brand].revenue / brands[brand].spend).toFixed(2) : '0',
+        conversionRate: brands[brand].clicks > 0 ? ((brands[brand].conversions / brands[brand].clicks) * 100).toFixed(2) + '%' : '0%'
+      })).sort((a, b) => parseFloat(b.roas) - parseFloat(a.roas)).slice(0, 10),
+      
+      topProducts: Object.keys(products).map(productId => ({
+        productId: productId,
+        title: products[productId].title,
+        impressions: products[productId].impressions,
+        clicks: products[productId].clicks,
+        conversions: products[productId].conversions,
+        spend: products[productId].spend.toFixed(2),
+        revenue: products[productId].revenue.toFixed(2),
+        roas: products[productId].spend > 0 ? (products[productId].revenue / products[productId].spend).toFixed(2) : '0',
+        conversionRate: products[productId].clicks > 0 ? ((products[productId].conversions / products[productId].clicks) * 100).toFixed(2) + '%' : '0%'
+      })).sort((a, b) => parseFloat(b.roas) - parseFloat(a.roas)).slice(0, 20),
+
+      recommendations: [
+        `Focus on top-performing categories with ROAS > 3.0`,
+        `Expand successful product lines with high conversion rates`,
+        `Review low-performing products with high spend but poor ROAS`
+      ]
+    };
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      period: period,
+      shoppingIntelligence: shoppingAnalysis
+    });
+
+  } catch (error) {
+    console.error('Error in shopping analysis:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message,
+      message: 'Shopping campaign analysis failed - this may indicate no shopping campaigns exist or API access issues'
+    });
+  }
+});
+
+// PERFORMANCE MAX ANALYSIS
+app.get('/api/intelligence/performance-max/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { period = 'LAST_30_DAYS' } = req.query;
+    
+    console.log(`🚀 Performance Max analysis: ${accountId}`);
+    
+    const pMaxQuery = intelligenceEngine.buildQuery('performanceMaxIntelligence', period);
+    const result = await executeGAQLQuery(pMaxQuery, accountId);
+    
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+
+    if (result.data.length === 0) {
+      return res.json({
+        success: true,
+        accountId: accountId,
+        period: period,
+        message: 'No Performance Max campaigns found',
+        performanceMaxIntelligence: {
+          totalCampaigns: 0,
+          campaignPerformance: [],
+          recommendations: ['No Performance Max campaigns detected in this account']
+        }
+      });
+    }
+
+    const campaigns = {};
+    result.data.forEach(row => {
+      const campaignName = row.campaign?.name || 'Unknown Campaign';
+      if (!campaigns[campaignName]) {
+        campaigns[campaignName] = {
+          impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0
+        };
+      }
+      campaigns[campaignName].impressions += row.metrics?.impressions || 0;
+      campaigns[campaignName].clicks += row.metrics?.clicks || 0;
+      campaigns[campaignName].conversions += row.metrics?.conversions || 0;
+      campaigns[campaignName].spend += (row.metrics?.cost_micros || 0) / 1000000;
+      campaigns[campaignName].revenue += row.metrics?.conversions_value || 0;
+    });
+
+    const performanceMaxAnalysis = {
+      totalCampaigns: Object.keys(campaigns).length,
+      campaignPerformance: Object.keys(campaigns).map(name => ({
+        campaign: name,
+        ...campaigns[name],
+        roas: campaigns[name].spend > 0 ? 
+          (campaigns[name].revenue / campaigns[name].spend).toFixed(2) : '0',
+        conversionRate: campaigns[name].clicks > 0 ? 
+          ((campaigns[name].conversions / campaigns[name].clicks) * 100).toFixed(2) + '%' : '0%',
+        ctr: campaigns[name].impressions > 0 ?
+          ((campaigns[name].clicks / campaigns[name].impressions) * 100).toFixed(2) + '%' : '0%'
+      })).sort((a, b) => parseFloat(b.roas) - parseFloat(a.roas)),
+      recommendations: [
+        'Monitor asset group performance and refresh creative assets regularly',
+        'Ensure conversion tracking is properly set up for accurate ROAS measurement',
+        'Consider expanding successful Performance Max campaigns with higher budgets'
+      ]
+    };
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      period: period,
+      performanceMaxIntelligence: performanceMaxAnalysis
+    });
+
+  } catch (error) {
+    console.error('Error in Performance Max analysis:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// SMART ANALYSIS WITH AI LEARNING
+app.get('/api/chatgpt/smart-analysis/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { period = 'LAST_30_DAYS' } = req.query;
+    
+    console.log(`🧠 Smart AI analysis requested: ${accountId}`);
+    
+    // Get regular analysis
+    const regularAnalysis = await executeGAQLQuery(`
+      SELECT 
+        campaign.name,
+        metrics.clicks,
+        metrics.conversions,
+        metrics.cost_micros,
+        metrics.ctr
+      FROM campaign 
+      WHERE segments.date DURING ${period}
+      ORDER BY metrics.cost_micros DESC
+    `, accountId);
+    
+    // Get AI insights
+    const aiInsights = aiMemory.getInsights(accountId);
+    
+    // Combine data analysis with AI learning
+    const smartRecommendations = [];
+    
+    if (regularAnalysis.success) {
+      const campaigns = regularAnalysis.data;
+      const totalSpend = campaigns.reduce((sum, c) => sum + (c.metrics?.cost_micros || 0), 0) / 1000000;
+      const avgConversionRate = campaigns.reduce((sum, c) => sum + (c.metrics?.conversions || 0), 0) / 
+                               campaigns.reduce((sum, c) => sum + (c.metrics?.clicks || 0), 0);
+      
+      // Use AI learning to make smarter recommendations
+      if (aiInsights.overallSuccessRate > 0.6) {
+        // High confidence recommendations
+        smartRecommendations.push({
+          type: 'high_confidence',
+          recommendation: `Based on ${aiInsights.totalRecommendations} previous recommendations with ${(aiInsights.overallSuccessRate * 100).toFixed(1)}% success rate`,
+          action: aiInsights.bestPractices.length > 0 ? 
+            `Apply proven strategy: ${aiInsights.bestPractices[0]}` : 
+            `Continue current approach - you're performing well`,
+          confidence: '🟢 High',
+          reasoning: 'My learning data shows this approach works for your account'
+        });
+      } else {
+        // Learning mode recommendations
+        smartRecommendations.push({
+          type: 'learning_mode',
+          recommendation: `I'm still learning what works best for your account (${aiInsights.totalRecommendations} recommendations so far)`,
+          action: 'Let\'s test conservative optimizations and track results',
+          confidence: '🟡 Learning',
+          reasoning: 'Building knowledge about your account performance patterns'
+        });
+      }
+      
+      // Account-specific insights
+      if (totalSpend > 5000 && avgConversionRate < 0.02) {
+        smartRecommendations.push({
+          type: 'spend_efficiency',
+          recommendation: `High spend (${totalSpend.toFixed(0)}) with low conversion rate (${(avgConversionRate * 100).toFixed(2)}%)`,
+          action: 'Focus on conversion rate optimization before scaling',
+          confidence: aiInsights.successfulPatterns.find(p => p.type === 'conversion_optimization') ? '🟢 Proven' : '🟡 Test',
+          reasoning: aiInsights.bestPractices.includes('conversion_optimization') ? 
+            'Previously successful strategy for your account' : 
+            'Logical next step based on data'
+        });
+      }
+    }
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      smartAnalysis: {
+        aiLearningStatus: {
+          recommendationsMade: aiInsights.totalRecommendations,
+          successRate: `${(aiInsights.overallSuccessRate * 100).toFixed(1)}%`,
+          confidenceLevel: aiInsights.overallSuccessRate > 0.6 ? 'Experienced' : 'Learning'
+        },
+        dataAnalysis: regularAnalysis.success ? {
+          totalCampaigns: regularAnalysis.data.length,
+          totalSpend: `${(regularAnalysis.data.reduce((sum, c) => sum + (c.metrics?.cost_micros || 0), 0) / 1000000).toFixed(2)}`,
+          avgConversionRate: `${(avgConversionRate * 100).toFixed(2)}%`
+        } : null,
+        smartRecommendations: smartRecommendations,
+        provenStrategies: aiInsights.bestPractices,
+        avoidsBasedOnLearning: aiInsights.thingsToAvoid.map(f => f.action)
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in smart analysis:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// AI LEARNING DASHBOARD
+app.get('/api/ai/learning-dashboard', async (req, res) => {
+  try {
+    const allPatterns = Object.values(aiMemory.memory.patterns);
+    const allRecommendations = aiMemory.memory.recommendations;
+    const completedRecs = allRecommendations.filter(r => r.status === 'completed');
+    const successfulRecs = allRecommendations.filter(r => r.outcome === true);
+    
+    const overallSuccessRate = completedRecs.length > 0 ? 
+      (successfulRecs.length / completedRecs.length) : 0;
+    
+    res.json({
+      success: true,
+      learningDashboard: {
+        overview: {
+          totalRecommendations: allRecommendations.length,
+          completedRecommendations: completedRecs.length,
+          pendingRecommendations: allRecommendations.filter(r => r.status === 'pending').length,
+          overallSuccessRate: `${(overallSuccessRate * 100).toFixed(1)}%`,
+          expertiseLevel: overallSuccessRate > 0.7 ? 'Expert' : 
+                         overallSuccessRate > 0.4 ? 'Intermediate' : 'Learning'
+        },
+        recentActivity: allRecommendations.slice(-10).reverse().map(r => ({
+          id: r.id,
+          date: r.timestamp.split('T')[0],
+          account: r.accountId,
+          type: r.recommendation.type,
+          action: r.recommendation.action,
+          status: r.status,
+          outcome: r.outcome === true ? '✅ Success' : 
+                   r.outcome === false ? '❌ Failed' : '⏳ Pending'
+        }))
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in learning dashboard:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message,
+      fallback: 'Learning dashboard temporarily unavailable'
+    });
   }
 });
 
