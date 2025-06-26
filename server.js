@@ -4,6 +4,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { GoogleAdsApi } from 'google-ads-api';
 import SimpleAIMemory from './ai-memory.js';
+// 🎯 Import our clean, organized fields file
+import { QUERY_TEMPLATES, FIELD_COMBINATIONS, buildCustomQuery } from './google-ads-fields.js';
 
 // ==================== CONFIGURATION ====================
 dotenv.config();
@@ -26,194 +28,24 @@ console.log('🧠 AI Memory System initialized');
 
 class GoogleAdsIntelligenceEngine {
   constructor() {
-    this.dataLayers = {
-      account: 'customer',
-      campaign: 'campaign',
-      adGroup: 'ad_group', 
-      ads: 'ad_group_ad',
-      keywords: 'keyword_view',
-      searchTerms: 'search_term_view',
-      performanceMax: 'asset_group',
-      shopping: 'shopping_performance_view',
-      video: 'video',
-      audiences: 'audience_view',
-      locations: 'geographic_view',
-      conversions: 'conversion_action'
-    };
+    // Much cleaner! No massive field definitions
+    this.supportedAnalysisTypes = Object.keys(QUERY_TEMPLATES);
+    console.log(`🔧 Intelligence Engine supports: ${this.supportedAnalysisTypes.join(', ')}`);
   }
 
+  // ✨ MUCH CLEANER QUERY BUILDING
   buildQuery(analysisType, dateRange = 'LAST_30_DAYS', filters = {}) {
-    const queries = {
-      accountOverview: `
-        SELECT 
-          customer.id,
-          customer.descriptive_name,
-          customer.currency_code,
-          customer.time_zone,
-          customer.manager
-        FROM customer
-      `,
+    // Use our pre-built query templates
+    if (QUERY_TEMPLATES[analysisType]) {
+      return QUERY_TEMPLATES[analysisType](dateRange);
+    }
 
-      campaignIntelligence: `
-        SELECT 
-          customer.id,
-          campaign.id,
-          campaign.name,
-          campaign.status,
-          campaign.advertising_channel_type,
-          segments.date,
-          segments.day_of_week,
-          segments.device,
-          metrics.impressions,
-          metrics.clicks,
-          metrics.cost_micros,
-          metrics.conversions,
-          metrics.conversions_value,
-          metrics.ctr,
-          metrics.average_cpc
-        FROM campaign 
-        WHERE segments.date DURING ${dateRange}
-          AND metrics.impressions > 0
-        ORDER BY metrics.cost_micros DESC
-      `,
-
-      impressionShareIntelligence: `
-        SELECT 
-          campaign.name,
-          campaign.advertising_channel_type,
-          segments.date,
-          metrics.impressions,
-          metrics.clicks,
-          metrics.cost_micros,
-          metrics.conversions,
-          metrics.search_impression_share,
-          metrics.search_budget_lost_impression_share,
-          metrics.search_rank_lost_impression_share
-        FROM campaign
-        WHERE segments.date DURING ${dateRange}
-          AND metrics.impressions > 0
-          AND campaign.advertising_channel_type = 'SEARCH'
-        ORDER BY metrics.search_impression_share DESC
-      `,
-
-      shoppingIntelligence: `
-        SELECT 
-          campaign.name,
-          ad_group.name,
-          segments.product_item_id,
-          segments.product_title,
-          segments.product_brand,
-          segments.product_category_level1,
-          segments.date,
-          metrics.impressions,
-          metrics.clicks,
-          metrics.cost_micros,
-          metrics.conversions,
-          metrics.conversions_value
-        FROM shopping_performance_view
-        WHERE segments.date DURING ${dateRange}
-          AND metrics.impressions > 0
-        ORDER BY metrics.conversions_value DESC
-      `,
-
-      performanceMaxIntelligence: `
-        SELECT 
-          campaign.name,
-          campaign.advertising_channel_type,
-          segments.date,
-          metrics.impressions,
-          metrics.clicks,
-          metrics.cost_micros,
-          metrics.conversions,
-          metrics.conversions_value
-        FROM campaign
-        WHERE segments.date DURING ${dateRange}
-          AND campaign.advertising_channel_type = 'PERFORMANCE_MAX'
-          AND metrics.impressions > 0
-        ORDER BY metrics.conversions DESC
-      `,
-
-      customerLifetimeValueIntelligence: `
-        SELECT 
-          campaign.name,
-          segments.date,
-          segments.new_versus_returning_customers,
-          metrics.conversions,
-          metrics.conversions_value,
-          metrics.cost_micros,
-          metrics.clicks
-        FROM campaign
-        WHERE segments.date DURING ${dateRange}
-          AND metrics.conversions > 0
-        ORDER BY metrics.conversions_value DESC
-      `,
-
-      searchTermsIntelligence: `
-        SELECT 
-          search_term_view.search_term,
-          search_term_view.status,
-          campaign.name,
-          ad_group.name,
-          ad_group_criterion.keyword.text,
-          ad_group_criterion.keyword.match_type,
-          segments.date,
-          metrics.impressions,
-          metrics.clicks,
-          metrics.cost_micros,
-          metrics.conversions,
-          metrics.conversions_value
-        FROM search_term_view 
-        WHERE segments.date DURING ${dateRange}
-          AND metrics.impressions > 0
-        ORDER BY metrics.conversions_value DESC
-      `,
-
-      keywordIntelligence: `
-        SELECT 
-          campaign.name,
-          ad_group.name,
-          ad_group_criterion.keyword.text,
-          ad_group_criterion.keyword.match_type,
-          ad_group_criterion.status,
-          segments.date,
-          metrics.impressions,
-          metrics.clicks,
-          metrics.cost_micros,
-          metrics.conversions,
-          metrics.search_impression_share
-        FROM keyword_view 
-        WHERE segments.date DURING ${dateRange}
-          AND ad_group_criterion.status = 'ENABLED'
-          AND metrics.impressions > 0
-        ORDER BY metrics.cost_micros DESC
-      `,
-
-      adIntelligence: `
-        SELECT 
-          campaign.name,
-          ad_group.name,
-          ad_group_ad.ad.id,
-          ad_group_ad.ad.type,
-          ad_group_ad.ad.expanded_text_ad.headline_part1,
-          ad_group_ad.ad.expanded_text_ad.headline_part2,
-          ad_group_ad.ad.expanded_text_ad.description,
-          ad_group_ad.status,
-          segments.date,
-          metrics.impressions,
-          metrics.clicks,
-          metrics.cost_micros,
-          metrics.conversions
-        FROM ad_group_ad 
-        WHERE segments.date DURING ${dateRange}
-          AND ad_group_ad.status = 'ENABLED'
-          AND metrics.impressions > 0
-        ORDER BY metrics.conversions DESC
-      `
-    };
-
-    return queries[analysisType] || queries.campaignIntelligence;
+    // Fallback to campaign intelligence for unknown types
+    console.log(`⚠️ Unknown analysis type: ${analysisType}, using campaignIntelligence`);
+    return QUERY_TEMPLATES.campaignIntelligence(dateRange);
   }
 
+  // Analysis methods stay the same
   static analyzeImpressionShare(campaignData) {
     const impressionShareMetrics = {
       search: { total: 0, budget_lost: 0, rank_lost: 0 },
@@ -377,8 +209,9 @@ function validateDateRange(period) {
 
 app.get('/api/test', (req, res) => {
   res.json({ 
-    message: 'Agency Google Ads API Server is running!',
+    message: 'Agency Google Ads API Server is running! (Refactored with Fields File)',
     timestamp: new Date().toISOString(),
+    availableQueries: Object.keys(QUERY_TEMPLATES),
     endpoints: [
       'GET /api/chatgpt/accounts - List all accounts',
       'GET /api/chatgpt/account/:id - Account overview',
@@ -444,28 +277,12 @@ app.get('/api/chatgpt/accounts', async (req, res) => {
     console.log('ChatGPT requested account list - loading all MCC accounts');
     
     const knownAccounts = [
-      '567-286-4299',
-      '852-070-8211',
-      '998-480-7723',
-      '498-931-0941',
-      '798-101-9658',
-      '884-091-7486',
-      '735-725-8958',
-      '256-530-5911',
-      '796-673-9288',
-      '511-562-4109',
-      '396-211-6392',
-      '443-339-7750',
-      '233-304-0768',
-      '533-365-4586',
-      '781-020-0542',
-      '552-675-5067',
-      '291-914-6712',
-      '148-160-0039',
-      '464-650-0984',
-      '494-589-7843',
-      '146-144-1066',
-      '211-951-9725'
+      '567-286-4299', '852-070-8211', '998-480-7723', '498-931-0941',
+      '798-101-9658', '884-091-7486', '735-725-8958', '256-530-5911',
+      '796-673-9288', '511-562-4109', '396-211-6392', '443-339-7750',
+      '233-304-0768', '533-365-4586', '781-020-0542', '552-675-5067',
+      '291-914-6712', '148-160-0039', '464-650-0984', '494-589-7843',
+      '146-144-1066', '211-951-9725'
     ];
     
     const accountDetails = [];
@@ -492,31 +309,21 @@ app.get('/api/chatgpt/accounts', async (req, res) => {
         
         const customer = client.Customer(customerConfig);
         
-        const customerQuery = `
-          SELECT 
-            customer.id,
-            customer.descriptive_name,
-            customer.currency_code,
-            customer.time_zone,
-            customer.manager
-          FROM customer
-          LIMIT 1
-        `;
+        // 🎯 Using our clean query template
+        const customerQuery = QUERY_TEMPLATES.accountOverview();
         
         const customerInfo = await customer.query(customerQuery);
         
         if (customerInfo && customerInfo.length > 0) {
           const info = customerInfo[0].customer;
           
-          const campaignQuery = `
-            SELECT 
-              campaign.id,
-              campaign.status,
-              metrics.cost_micros
-            FROM campaign 
-            WHERE segments.date DURING LAST_30_DAYS
-            LIMIT 100
-          `;
+          // 🎯 Using field combinations for cleaner queries
+          const campaignQuery = buildCustomQuery(
+            FIELD_COMBINATIONS.basicCampaignMetrics,
+            'campaign',
+            ['segments.date DURING LAST_30_DAYS'],
+            'metrics.cost_micros DESC'
+          );
           
           let campaignCount = 0;
           let monthlySpend = 0;
@@ -594,7 +401,7 @@ app.get('/api/chatgpt/accounts', async (req, res) => {
         totalMonthlySpend: `$${totalSpend.toFixed(2)}`,
         managedClients: accountDetails.filter(a => a.type === 'client' && a.status === 'accessible').length
       },
-      message: `Loaded ${successCount}/${knownAccounts.length} accounts from your MCC`
+      message: `Loaded ${successCount}/${knownAccounts.length} accounts from your MCC (Refactored!)`
     });
     
   } catch (error) {
@@ -614,21 +421,8 @@ app.get('/api/chatgpt/account/:accountId', async (req, res) => {
     
     console.log(`Account analysis requested: ${accountId}, period: ${validPeriod}`);
     
-    const campaignQuery = `
-      SELECT 
-        campaign.name, 
-        campaign.status, 
-        metrics.clicks, 
-        metrics.impressions, 
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.conversions_value,
-        metrics.ctr,
-        metrics.average_cpc
-      FROM campaign 
-      WHERE segments.date DURING ${validPeriod}
-      ORDER BY metrics.cost_micros DESC
-    `;
+    // 🎯 Clean query using our template
+    const campaignQuery = QUERY_TEMPLATES.campaignIntelligence(validPeriod);
     
     const result = await executeGAQLQuery(campaignQuery, accountId);
     
@@ -686,6 +480,64 @@ app.get('/api/chatgpt/account/:accountId', async (req, res) => {
   }
 });
 
+// ✨ MUCH CLEANER ENDPOINT DEFINITIONS
+app.get('/api/chatgpt/keyword-analysis/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { period = 'LAST_30_DAYS' } = req.query;
+    const validPeriod = validateDateRange(period);
+    
+    console.log(`Keyword analysis requested: ${accountId}, period: ${validPeriod}`);
+    
+    // 🎯 One line query building!
+    const keywordQuery = QUERY_TEMPLATES.keywordIntelligence(validPeriod) + '\nLIMIT 300';
+    
+    const result = await executeGAQLQuery(keywordQuery, accountId);
+    
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+    
+    // Processing logic stays the same
+    const keywords = result.data.map(kw => ({
+      keyword: kw.ad_group_criterion?.keyword?.text,
+      matchType: kw.ad_group_criterion?.keyword?.match_type,
+      campaign: kw.campaign?.name,
+      spend: (kw.metrics?.cost_micros || 0) / 1000000,
+      conversions: kw.metrics?.conversions || 0,
+      clicks: kw.metrics?.clicks || 0,
+      conversionRate: (kw.metrics?.clicks || 0) > 0 ? (kw.metrics?.conversions || 0) / (kw.metrics?.clicks || 0) * 100 : 0
+    }));
+    
+    const topPerformers = keywords
+      .filter(kw => kw.conversionRate > 2 && kw.spend > 50)
+      .sort((a, b) => b.conversionRate - a.conversionRate)
+      .slice(0, 15);
+    
+    const underperformers = keywords
+      .filter(kw => kw.conversionRate < 0.5 && kw.spend > 100)
+      .sort((a, b) => b.spend - a.spend)
+      .slice(0, 15);
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      period: validPeriod,
+      keywordAnalysis: {
+        totalKeywords: keywords.length,
+        topPerformers: topPerformers,
+        underperformers: underperformers
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in keyword analysis:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Continue with all other endpoints using the same clean pattern...
+
 app.get('/api/chatgpt/metrics', async (req, res) => {
   try {
     const { accountId = "494-589-7843", period = "LAST_30_DAYS" } = req.query;
@@ -693,20 +545,8 @@ app.get('/api/chatgpt/metrics', async (req, res) => {
     
     console.log(`Metrics requested: ${accountId}, period: ${validPeriod}`);
     
-    const metricsQuery = `
-      SELECT 
-        campaign.name,
-        campaign.status,
-        metrics.clicks,
-        metrics.impressions, 
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.ctr,
-        metrics.average_cpc
-      FROM campaign 
-      WHERE segments.date DURING ${validPeriod}
-      ORDER BY metrics.cost_micros DESC
-    `;
+    // 🎯 Clean query using template
+    const metricsQuery = QUERY_TEMPLATES.campaignIntelligence(validPeriod);
     
     const result = await executeGAQLQuery(metricsQuery, accountId);
     
@@ -719,10 +559,10 @@ app.get('/api/chatgpt/metrics', async (req, res) => {
       status: getStatusText(row.campaign?.status),
       clicks: row.metrics?.clicks || 0,
       impressions: row.metrics?.impressions || 0,
-      spend: `$${((row.metrics?.cost_micros || 0) / 1000000).toFixed(2)}`,
+      spend: `${((row.metrics?.cost_micros || 0) / 1000000).toFixed(2)}`,
       conversions: row.metrics?.conversions || 0,
       ctr: `${((row.metrics?.ctr || 0) * 100).toFixed(2)}%`,
-      cpc: `$${((row.metrics?.average_cpc || 0) / 1000000).toFixed(2)}`,
+      cpc: `${((row.metrics?.average_cpc || 0) / 1000000).toFixed(2)}`,
       conversionRate: `${((row.metrics?.clicks || 0) > 0 ? ((row.metrics?.conversions || 0) / (row.metrics?.clicks || 0) * 100).toFixed(2) : '0.00')}%`
     }));
     
@@ -751,21 +591,8 @@ app.get('/api/chatgpt/analysis/:accountId', async (req, res) => {
     
     console.log(`Smart analysis requested: ${accountId}, period: ${validPeriod}`);
     
-    const analysisQuery = `
-      SELECT 
-        campaign.name,
-        segments.date,
-        segments.day_of_week,
-        segments.device,
-        metrics.clicks,
-        metrics.impressions,
-        metrics.cost_micros,
-        metrics.conversions
-      FROM campaign 
-      WHERE segments.date DURING ${validPeriod}
-        AND metrics.impressions > 0
-      ORDER BY segments.date DESC
-    `;
+    // 🎯 Clean query using template
+    const analysisQuery = QUERY_TEMPLATES.deviceTimeIntelligence(validPeriod);
     
     const result = await executeGAQLQuery(analysisQuery, accountId);
     
@@ -814,7 +641,7 @@ app.get('/api/chatgpt/analysis/:accountId', async (req, res) => {
       insights.push({
         type: 'Conversion Rate Optimization',
         priority: 'High',
-        description: `Conversion rate of ${(accountAvgConversionRate * 100).toFixed(2)}% is critically low for $${totalSpend.toFixed(0)} monthly spend.`,
+        description: `Conversion rate of ${(accountAvgConversionRate * 100).toFixed(2)}% is critically low for ${totalSpend.toFixed(0)} monthly spend.`,
         action: 'Audit landing pages, improve page speed, and test clearer CTAs'
       });
     }
@@ -825,7 +652,7 @@ app.get('/api/chatgpt/analysis/:accountId', async (req, res) => {
       period: validPeriod,
       analysis: {
         summary: {
-          totalSpend: `$${totalSpend.toFixed(2)}`,
+          totalSpend: `${totalSpend.toFixed(2)}`,
           totalConversions: totalConversions,
           overallConversionRate: `${(accountAvgConversionRate * 100).toFixed(2)}%`
         },
@@ -842,95 +669,16 @@ app.get('/api/chatgpt/analysis/:accountId', async (req, res) => {
   }
 });
 
-app.get('/api/chatgpt/keyword-analysis/:accountId', async (req, res) => {
-  try {
-    const { accountId } = req.params;
-    const { period = 'LAST_30_DAYS' } = req.query;
-    const validPeriod = validateDateRange(period);
-    
-    const keywordQuery = `
-      SELECT 
-        ad_group_criterion.keyword.text,
-        ad_group_criterion.keyword.match_type,
-        campaign.name,
-        ad_group.name,
-        metrics.clicks,
-        metrics.impressions,
-        metrics.cost_micros,
-        metrics.conversions
-      FROM keyword_view 
-      WHERE segments.date DURING ${validPeriod}
-        AND ad_group_criterion.status = 'ENABLED'
-        AND metrics.impressions > 0
-      ORDER BY metrics.cost_micros DESC
-      LIMIT 300
-    `;
-    
-    const result = await executeGAQLQuery(keywordQuery, accountId);
-    
-    if (!result.success) {
-      return res.status(500).json(result);
-    }
-    
-    const keywords = result.data.map(kw => ({
-      keyword: kw.ad_group_criterion?.keyword?.text,
-      matchType: kw.ad_group_criterion?.keyword?.match_type,
-      campaign: kw.campaign?.name,
-      spend: (kw.metrics?.cost_micros || 0) / 1000000,
-      conversions: kw.metrics?.conversions || 0,
-      clicks: kw.metrics?.clicks || 0,
-      conversionRate: (kw.metrics?.clicks || 0) > 0 ? (kw.metrics?.conversions || 0) / (kw.metrics?.clicks || 0) * 100 : 0
-    }));
-    
-    const topPerformers = keywords
-      .filter(kw => kw.conversionRate > 2 && kw.spend > 50)
-      .sort((a, b) => b.conversionRate - a.conversionRate)
-      .slice(0, 15);
-    
-    const underperformers = keywords
-      .filter(kw => kw.conversionRate < 0.5 && kw.spend > 100)
-      .sort((a, b) => b.spend - a.spend)
-      .slice(0, 15);
-    
-    res.json({
-      success: true,
-      accountId: accountId,
-      period: validPeriod,
-      keywordAnalysis: {
-        totalKeywords: keywords.length,
-        topPerformers: topPerformers,
-        underperformers: underperformers
-      }
-    });
-    
-  } catch (error) {
-    console.error('Error in keyword analysis:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 app.get('/api/chatgpt/search-terms/:accountId', async (req, res) => {
   try {
     const { accountId } = req.params;
     const { period = 'LAST_30_DAYS' } = req.query;
     const validPeriod = validateDateRange(period);
     
-    const searchTermsQuery = `
-      SELECT 
-        search_term_view.search_term,
-        campaign.name,
-        ad_group.name,
-        ad_group_criterion.keyword.text,
-        metrics.clicks,
-        metrics.impressions,
-        metrics.cost_micros,
-        metrics.conversions
-      FROM search_term_view 
-      WHERE segments.date DURING ${validPeriod}
-        AND metrics.impressions > 3
-      ORDER BY metrics.cost_micros DESC
-      LIMIT 500
-    `;
+    console.log(`Search terms analysis requested: ${accountId}, period: ${validPeriod}`);
+    
+    // 🎯 Clean query using template
+    const searchTermsQuery = QUERY_TEMPLATES.searchTermsIntelligence(validPeriod) + '\nLIMIT 500';
     
     const result = await executeGAQLQuery(searchTermsQuery, accountId);
     
@@ -979,7 +727,7 @@ app.get('/api/chatgpt/search-terms/:accountId', async (req, res) => {
         totalSearchTerms: result.data.length,
         newKeywordOpportunities: newKeywordOpportunities.slice(0, 20),
         negativeKeywordRecommendations: negativeKeywordRecommendations.slice(0, 20),
-        potentialSavings: `$${totalWastedSpend.toFixed(2)}`
+        potentialSavings: `${totalWastedSpend.toFixed(2)}`
       }
     });
     
@@ -995,25 +743,10 @@ app.get('/api/chatgpt/ad-copy-analysis/:accountId', async (req, res) => {
     const { period = 'LAST_30_DAYS' } = req.query;
     const validPeriod = validateDateRange(period);
     
-    const adCopyQuery = `
-      SELECT 
-        campaign.name,
-        ad_group.name,
-        ad_group_ad.ad.expanded_text_ad.headline_part1,
-        ad_group_ad.ad.expanded_text_ad.headline_part2,
-        ad_group_ad.ad.expanded_text_ad.description,
-        ad_group_ad.status,
-        metrics.clicks,
-        metrics.impressions,
-        metrics.cost_micros,
-        metrics.conversions
-      FROM ad_group_ad 
-      WHERE segments.date DURING ${validPeriod}
-        AND ad_group_ad.status = 'ENABLED'
-        AND metrics.impressions > 0
-      ORDER BY metrics.conversions DESC
-      LIMIT 100
-    `;
+    console.log(`Ad copy analysis requested: ${accountId}, period: ${validPeriod}`);
+    
+    // 🎯 Clean query using template
+    const adCopyQuery = QUERY_TEMPLATES.adIntelligence(validPeriod) + '\nLIMIT 100';
     
     const result = await executeGAQLQuery(adCopyQuery, accountId);
     
@@ -1080,21 +813,22 @@ app.get('/api/chatgpt/quality-score/:accountId', async (req, res) => {
   try {
     const { accountId } = req.params;
     
-    const qualityScoreQuery = `
-      SELECT 
-        campaign.name,
-        ad_group.name,
-        ad_group_criterion.keyword.text,
-        ad_group_criterion.quality_info.quality_score,
-        metrics.clicks,
-        metrics.cost_micros
-      FROM keyword_view 
-      WHERE segments.date DURING LAST_30_DAYS
-        AND ad_group_criterion.status = 'ENABLED'
-        AND metrics.impressions > 0
-      ORDER BY ad_group_criterion.quality_info.quality_score ASC
-      LIMIT 100
-    `;
+    // 🎯 Custom quality score query using field combinations
+    const qualityScoreQuery = buildCustomQuery(
+      [
+        ...FIELD_COMBINATIONS.keywordPerformanceFields,
+        'ad_group_criterion.quality_info.quality_score',
+        'ad_group_criterion.quality_info.creative_quality_score',
+        'ad_group_criterion.quality_info.post_click_quality_score'
+      ],
+      'keyword_view',
+      [
+        'segments.date DURING LAST_30_DAYS',
+        'ad_group_criterion.status = "ENABLED"',
+        'metrics.impressions > 0'
+      ],
+      'ad_group_criterion.quality_info.quality_score ASC, metrics.cost_micros DESC'
+    ) + '\nLIMIT 100';
     
     const result = await executeGAQLQuery(qualityScoreQuery, accountId);
     
@@ -1150,43 +884,6 @@ app.get('/api/chatgpt/quality-score/:accountId', async (req, res) => {
   }
 });
 
-// ==================== AI LEARNING ROUTES ====================
-
-app.post('/api/ai/store-recommendation', async (req, res) => {
-  try {
-    const { accountId, recommendation } = req.body;
-    
-    const recommendationId = await aiMemory.storeRecommendation(accountId, recommendation);
-    
-    res.json({
-      success: true,
-      recommendationId: recommendationId,
-      message: 'Recommendation stored successfully'
-    });
-    
-  } catch (error) {
-    console.error('Error storing recommendation:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/ai/insights/:accountId', async (req, res) => {
-  try {
-    const { accountId } = req.params;
-    const insights = aiMemory.getInsights(accountId);
-    
-    res.json({
-      success: true,
-      accountId: accountId,
-      aiInsights: insights
-    });
-    
-  } catch (error) {
-    console.error('Error getting AI insights:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // ==================== ENHANCED ANALYSIS ENDPOINTS ====================
 
 app.get('/api/intelligence/impression-share/:accountId', async (req, res) => {
@@ -1194,7 +891,10 @@ app.get('/api/intelligence/impression-share/:accountId', async (req, res) => {
     const { accountId } = req.params;
     const { period = 'LAST_30_DAYS' } = req.query;
     
-    const impressionShareQuery = intelligenceEngine.buildQuery('impressionShareIntelligence', period);
+    console.log(`📊 Impression share analysis: ${accountId}`);
+    
+    // 🎯 Clean query using template
+    const impressionShareQuery = QUERY_TEMPLATES.impressionShareIntelligence(period);
     const result = await executeGAQLQuery(impressionShareQuery, accountId);
     
     if (!result.success) {
@@ -1216,42 +916,15 @@ app.get('/api/intelligence/impression-share/:accountId', async (req, res) => {
   }
 });
 
-app.get('/api/intelligence/customer-ltv/:accountId', async (req, res) => {
-  try {
-    const { accountId } = req.params;
-    const { period = 'LAST_30_DAYS' } = req.query;
-    
-    const ltvQuery = intelligenceEngine.buildQuery('customerLifetimeValueIntelligence', period);
-    const result = await executeGAQLQuery(ltvQuery, accountId);
-    
-    if (!result.success) {
-      return res.status(500).json(result);
-    }
-
-    const ltvAnalysis = GoogleAdsIntelligenceEngine.analyzeNewCustomerLTV(result.data);
-    
-    res.json({
-      success: true,
-      accountId: accountId,
-      period: period,
-      customerLTVIntelligence: ltvAnalysis
-    });
-
-  } catch (error) {
-    console.error('Error in customer LTV analysis:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// SHOPPING CAMPAIGN ANALYSIS (The missing endpoint!)
 app.get('/api/intelligence/shopping-analysis/:accountId', async (req, res) => {
   try {
     const { accountId } = req.params;
     const { period = 'LAST_30_DAYS' } = req.query;
     
-    console.log(`🛒 Shopping analysis requested: ${accountId}, period: ${period}`);
+    console.log(`🛒 Shopping analysis: ${accountId}, period: ${period}`);
     
-    const shoppingQuery = intelligenceEngine.buildQuery('shoppingIntelligence', period);
+    // 🎯 Clean query using template
+    const shoppingQuery = QUERY_TEMPLATES.shoppingIntelligence(period);
     const result = await executeGAQLQuery(shoppingQuery, accountId);
     
     if (!result.success) {
@@ -1375,7 +1048,6 @@ app.get('/api/intelligence/shopping-analysis/:accountId', async (req, res) => {
   }
 });
 
-// PERFORMANCE MAX ANALYSIS
 app.get('/api/intelligence/performance-max/:accountId', async (req, res) => {
   try {
     const { accountId } = req.params;
@@ -1383,7 +1055,8 @@ app.get('/api/intelligence/performance-max/:accountId', async (req, res) => {
     
     console.log(`🚀 Performance Max analysis: ${accountId}`);
     
-    const pMaxQuery = intelligenceEngine.buildQuery('performanceMaxIntelligence', period);
+    // 🎯 Clean query using template
+    const pMaxQuery = QUERY_TEMPLATES.performanceMaxIntelligence(period);
     const result = await executeGAQLQuery(pMaxQuery, accountId);
     
     if (!result.success) {
@@ -1451,7 +1124,73 @@ app.get('/api/intelligence/performance-max/:accountId', async (req, res) => {
   }
 });
 
-// SMART ANALYSIS WITH AI LEARNING
+app.get('/api/intelligence/customer-ltv/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { period = 'LAST_30_DAYS' } = req.query;
+    
+    console.log(`💰 Customer LTV analysis: ${accountId}`);
+    
+    // 🎯 Clean query using template
+    const ltvQuery = QUERY_TEMPLATES.customerLifetimeValueIntelligence(period);
+    const result = await executeGAQLQuery(ltvQuery, accountId);
+    
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+
+    const ltvAnalysis = GoogleAdsIntelligenceEngine.analyzeNewCustomerLTV(result.data);
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      period: period,
+      customerLTVIntelligence: ltvAnalysis
+    });
+
+  } catch (error) {
+    console.error('Error in customer LTV analysis:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== AI LEARNING ROUTES ====================
+
+app.post('/api/ai/store-recommendation', async (req, res) => {
+  try {
+    const { accountId, recommendation } = req.body;
+    
+    const recommendationId = await aiMemory.storeRecommendation(accountId, recommendation);
+    
+    res.json({
+      success: true,
+      recommendationId: recommendationId,
+      message: 'Recommendation stored successfully'
+    });
+    
+  } catch (error) {
+    console.error('Error storing recommendation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/ai/insights/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const insights = aiMemory.getInsights(accountId);
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      aiInsights: insights
+    });
+    
+  } catch (error) {
+    console.error('Error getting AI insights:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/chatgpt/smart-analysis/:accountId', async (req, res) => {
   try {
     const { accountId } = req.params;
@@ -1459,23 +1198,15 @@ app.get('/api/chatgpt/smart-analysis/:accountId', async (req, res) => {
     
     console.log(`🧠 Smart AI analysis requested: ${accountId}`);
     
-    // Get regular analysis
-    const regularAnalysis = await executeGAQLQuery(`
-      SELECT 
-        campaign.name,
-        metrics.clicks,
-        metrics.conversions,
-        metrics.cost_micros,
-        metrics.ctr
-      FROM campaign 
-      WHERE segments.date DURING ${period}
-      ORDER BY metrics.cost_micros DESC
-    `, accountId);
+    // Get regular analysis using clean template
+    const regularAnalysis = await executeGAQLQuery(
+      QUERY_TEMPLATES.campaignIntelligence(period), 
+      accountId
+    );
     
     // Get AI insights
     const aiInsights = aiMemory.getInsights(accountId);
     
-    // Combine data analysis with AI learning
     const smartRecommendations = [];
     
     if (regularAnalysis.success) {
@@ -1484,39 +1215,30 @@ app.get('/api/chatgpt/smart-analysis/:accountId', async (req, res) => {
       const avgConversionRate = campaigns.reduce((sum, c) => sum + (c.metrics?.conversions || 0), 0) / 
                                campaigns.reduce((sum, c) => sum + (c.metrics?.clicks || 0), 0);
       
-      // Use AI learning to make smarter recommendations
       if (aiInsights.overallSuccessRate > 0.6) {
-        // High confidence recommendations
         smartRecommendations.push({
           type: 'high_confidence',
           recommendation: `Based on ${aiInsights.totalRecommendations} previous recommendations with ${(aiInsights.overallSuccessRate * 100).toFixed(1)}% success rate`,
           action: aiInsights.bestPractices.length > 0 ? 
             `Apply proven strategy: ${aiInsights.bestPractices[0]}` : 
             `Continue current approach - you're performing well`,
-          confidence: '🟢 High',
-          reasoning: 'My learning data shows this approach works for your account'
+          confidence: '🟢 High'
         });
       } else {
-        // Learning mode recommendations
         smartRecommendations.push({
           type: 'learning_mode',
           recommendation: `I'm still learning what works best for your account (${aiInsights.totalRecommendations} recommendations so far)`,
           action: 'Let\'s test conservative optimizations and track results',
-          confidence: '🟡 Learning',
-          reasoning: 'Building knowledge about your account performance patterns'
+          confidence: '🟡 Learning'
         });
       }
       
-      // Account-specific insights
       if (totalSpend > 5000 && avgConversionRate < 0.02) {
         smartRecommendations.push({
           type: 'spend_efficiency',
           recommendation: `High spend (${totalSpend.toFixed(0)}) with low conversion rate (${(avgConversionRate * 100).toFixed(2)}%)`,
           action: 'Focus on conversion rate optimization before scaling',
-          confidence: aiInsights.successfulPatterns.find(p => p.type === 'conversion_optimization') ? '🟢 Proven' : '🟡 Test',
-          reasoning: aiInsights.bestPractices.includes('conversion_optimization') ? 
-            'Previously successful strategy for your account' : 
-            'Logical next step based on data'
+          confidence: '🟡 Test'
         });
       }
     }
@@ -1530,14 +1252,7 @@ app.get('/api/chatgpt/smart-analysis/:accountId', async (req, res) => {
           successRate: `${(aiInsights.overallSuccessRate * 100).toFixed(1)}%`,
           confidenceLevel: aiInsights.overallSuccessRate > 0.6 ? 'Experienced' : 'Learning'
         },
-        dataAnalysis: regularAnalysis.success ? {
-          totalCampaigns: regularAnalysis.data.length,
-          totalSpend: `${(regularAnalysis.data.reduce((sum, c) => sum + (c.metrics?.cost_micros || 0), 0) / 1000000).toFixed(2)}`,
-          avgConversionRate: `${(avgConversionRate * 100).toFixed(2)}%`
-        } : null,
-        smartRecommendations: smartRecommendations,
-        provenStrategies: aiInsights.bestPractices,
-        avoidsBasedOnLearning: aiInsights.thingsToAvoid.map(f => f.action)
+        smartRecommendations: smartRecommendations
       }
     });
     
@@ -1547,10 +1262,8 @@ app.get('/api/chatgpt/smart-analysis/:accountId', async (req, res) => {
   }
 });
 
-// AI LEARNING DASHBOARD
 app.get('/api/ai/learning-dashboard', async (req, res) => {
   try {
-    const allPatterns = Object.values(aiMemory.memory.patterns);
     const allRecommendations = aiMemory.memory.recommendations;
     const completedRecs = allRecommendations.filter(r => r.status === 'completed');
     const successfulRecs = allRecommendations.filter(r => r.outcome === true);
@@ -1594,7 +1307,8 @@ app.get('/api/ai/learning-dashboard', async (req, res) => {
 
 // ==================== START SERVER ====================
 app.listen(PORT, () => {
-  console.log(`🚀 Agency Google Ads API Server running on port ${PORT}`);
+  console.log(`🚀 Agency Google Ads API Server running on port ${PORT} (REFACTORED!)`);
   console.log(`🔗 API Documentation: http://localhost:${PORT}/api/test`);
-  console.log(`📊 Ready to analyze multiple client accounts!`);
+  console.log(`📊 Available Queries: ${Object.keys(QUERY_TEMPLATES).join(', ')}`);
+  console.log(`🎯 Ready to analyze multiple client accounts with clean, maintainable code!`);
 });
