@@ -5,6 +5,465 @@ import SimpleAIMemory from './ai-memory.js';
 const aiMemory = new SimpleAIMemory();
 console.log('🧠 AI Memory System initialized');
 
+// ==================== ENHANCED GOOGLE ADS INTELLIGENCE ENGINE ====================
+
+class GoogleAdsIntelligenceEngine {
+  constructor() {
+    this.dataLayers = {
+      // Core Resources
+      account: 'customer',
+      campaign: 'campaign',
+      adGroup: 'ad_group', 
+      ads: 'ad_group_ad',
+      keywords: 'keyword_view',
+      searchTerms: 'search_term_view',
+      
+      // Advanced Campaign Types
+      performanceMax: 'asset_group',
+      shopping: 'shopping_performance_view',
+      video: 'video',
+      app: 'campaign',
+      local: 'campaign',
+      discovery: 'campaign',
+      smart: 'campaign',
+      hotel: 'hotel_group_view',
+      
+      // Audience & Demographics
+      audiences: 'audience_view',
+      demographics: 'age_range_view',
+      userLists: 'user_list',
+      customAudiences: 'custom_audience',
+      
+      // Geographic & Placement
+      locations: 'geographic_view',
+      placements: 'detail_placement_view',
+      managedPlacements: 'managed_placement_view',
+      
+      // Assets & Creative
+      assets: 'asset',
+      assetGroups: 'asset_group',
+      assetGroupAssets: 'asset_group_asset',
+      
+      // Extensions & Features
+      extensions: 'extension_feed_item',
+      callouts: 'callout_feed_item',
+      sitelinks: 'sitelink_feed_item',
+      
+      // Conversion & Attribution
+      conversions: 'conversion_action',
+      conversionCustomVariable: 'conversion_custom_variable',
+      customerLifetime: 'customer_client',
+      
+      // Administrative
+      changeHistory: 'change_event',
+      recommendations: 'recommendation',
+      policies: 'ad_group_ad_policy_summary',
+      
+      // Landing Pages & Quality
+      landingPages: 'landing_page_view',
+      expandedLandingPages: 'expanded_landing_page_view',
+      
+      // Product & Shopping
+      productGroups: 'product_group_view',
+      shoppingProducts: 'shopping_product_view',
+      merchantCenter: 'merchant_center_link'
+    };
+  }
+
+  buildQuery(analysisType, dateRange = 'LAST_30_DAYS', filters = {}) {
+    const queries = {
+      // COMPLETE ACCOUNT OVERVIEW
+      accountOverview: `
+        SELECT 
+          customer.id,
+          customer.descriptive_name,
+          customer.currency_code,
+          customer.time_zone,
+          customer.auto_tagging_enabled,
+          customer.call_reporting_setting.call_conversion_action,
+          customer.call_reporting_setting.call_conversion_reporting_enabled,
+          customer.conversion_tracking_setting.google_ads_conversion_customer,
+          customer.conversion_tracking_setting.google_ads_cross_account_conversion_tracking_id,
+          customer.remarketing_setting.google_global_site_tag,
+          customer.manager,
+          customer.test_account,
+          customer.has_partners_badge,
+          customer.optimization_score,
+          customer.resource_name
+        FROM customer
+      `,
+
+      // COMPREHENSIVE CAMPAIGN INTELLIGENCE (ALL TYPES)
+      campaignIntelligence: `
+        SELECT 
+          customer.id,
+          campaign.id,
+          campaign.name,
+          campaign.status,
+          campaign.serving_status,
+          campaign.advertising_channel_type,
+          campaign.advertising_channel_sub_type,
+          campaign.campaign_budget.amount_micros,
+          campaign.campaign_budget.delivery_method,
+          campaign.bidding_strategy_type,
+          campaign.bidding_strategy,
+          campaign.target_cpa.target_cpa_micros,
+          campaign.target_roas.target_roas,
+          campaign.target_spend.target_spend_micros,
+          campaign.maximize_conversions.target_cpa_micros,
+          campaign.maximize_conversion_value.target_roas,
+          campaign.manual_cpc.enhanced_cpc_enabled,
+          campaign.manual_cpm,
+          campaign.manual_cpv,
+          campaign.start_date,
+          campaign.end_date,
+          campaign.optimization_score,
+          campaign.app_campaign_setting.app_id,
+          campaign.hotel_setting.hotel_center_id,
+          campaign.local_campaign_setting.location_source_type,
+          campaign.performance_max_upgrade.performance_max_campaign,
+          campaign.shopping_setting.merchant_id,
+          campaign.shopping_setting.sales_country,
+          campaign.shopping_setting.campaign_priority,
+          campaign.video_brand_safety_suitability,
+          segments.date,
+          segments.day_of_week,
+          segments.hour,
+          segments.device,
+          segments.click_type,
+          segments.conversion_action_category,
+          segments.new_versus_returning_customers,
+          
+          -- COMPLETE METRICS SUITE
+          metrics.impressions,
+          metrics.clicks,
+          metrics.cost_micros,
+          metrics.conversions,
+          metrics.conversions_value,
+          metrics.conversions_from_interactions_rate,
+          metrics.view_through_conversions,
+          metrics.cross_device_conversions,
+          metrics.ctr,
+          metrics.average_cpc,
+          metrics.average_cpm,
+          metrics.average_cpv,
+          metrics.cost_per_conversion,
+          metrics.cost_per_current_model_attributed_conversion,
+          metrics.value_per_conversion,
+          metrics.value_per_current_model_attributed_conversion,
+          
+          -- IMPRESSION SHARE METRICS (COMPLETE)
+          metrics.impression_share,
+          metrics.search_impression_share,
+          metrics.search_budget_lost_impression_share,
+          metrics.search_rank_lost_impression_share,
+          metrics.search_exact_match_impression_share,
+          metrics.content_impression_share,
+          metrics.content_budget_lost_impression_share,
+          metrics.content_rank_lost_impression_share,
+          
+          -- AUCTION INSIGHTS & COMPETITIVE METRICS
+          metrics.auction_insight_search_impression_share,
+          metrics.auction_insight_search_outranking_share,
+          metrics.auction_insight_search_overlap_rate,
+          metrics.auction_insight_search_position_above_rate,
+          metrics.auction_insight_search_top_impression_rate,
+          
+          -- VIDEO CAMPAIGN METRICS
+          metrics.video_views,
+          metrics.video_view_rate,
+          metrics.video_quartile_p25_rate,
+          metrics.video_quartile_p50_rate,
+          metrics.video_quartile_p75_rate,
+          metrics.video_quartile_p100_rate,
+          
+          -- SHOPPING CAMPAIGN METRICS
+          metrics.shopping_legacy_conversion_value,
+          metrics.shopping_legacy_conversions,
+          
+          -- APP CAMPAIGN METRICS  
+          metrics.app_install_rate,
+          metrics.app_installs,
+          
+          -- NEW CUSTOMER METRICS
+          metrics.new_customer_lifetime_value,
+          metrics.existing_customer_lifetime_value,
+          
+          -- PERFORMANCE MAX METRICS
+          metrics.asset_group_conversions,
+          metrics.asset_group_conversions_value
+          
+        FROM campaign 
+        WHERE segments.date DURING ${dateRange}
+        ORDER BY metrics.cost_micros DESC
+      `,
+
+      // PERFORMANCE MAX DEEP DIVE
+      performanceMaxIntelligence: `
+        SELECT 
+          campaign.name,
+          asset_group.name,
+          asset_group.status,
+          asset_group.resource_name,
+          asset_group.final_urls,
+          asset_group.final_mobile_urls,
+          asset_group.path1,
+          asset_group.path2,
+          segments.date,
+          segments.asset_interaction_target.asset,
+          segments.asset_interaction_target.interaction_type,
+          metrics.impressions,
+          metrics.clicks,
+          metrics.cost_micros,
+          metrics.conversions,
+          metrics.conversions_value,
+          metrics.view_through_conversions,
+          metrics.all_conversions,
+          metrics.all_conversions_value
+        FROM asset_group
+        WHERE segments.date DURING ${dateRange}
+          AND campaign.advertising_channel_type = 'PERFORMANCE_MAX'
+          AND metrics.impressions > 0
+        ORDER BY metrics.conversions DESC
+      `,
+
+      // SHOPPING & RETAIL INTELLIGENCE
+      shoppingIntelligence: `
+        SELECT 
+          campaign.name,
+          ad_group.name,
+          segments.product_item_id,
+          segments.product_title,
+          segments.product_brand,
+          segments.product_category_level1,
+          segments.product_category_level2,
+          segments.product_category_level3,
+          segments.product_category_level4,
+          segments.product_category_level5,
+          segments.product_condition,
+          segments.product_country,
+          segments.product_language,
+          segments.product_price,
+          segments.product_currency,
+          segments.date,
+          metrics.impressions,
+          metrics.clicks,
+          metrics.cost_micros,
+          metrics.conversions,
+          metrics.conversions_value,
+          metrics.ctr,
+          metrics.average_cpc,
+          shopping_performance_view.click_potential,
+          shopping_performance_view.click_potential_rank
+        FROM shopping_performance_view
+        WHERE segments.date DURING ${dateRange}
+          AND metrics.impressions > 0
+        ORDER BY metrics.conversions_value DESC
+      `,
+
+      // VIDEO & YOUTUBE INTELLIGENCE
+      videoIntelligence: `
+        SELECT 
+          campaign.name,
+          ad_group.name,
+          ad_group_ad.ad.video_ad.video.id,
+          ad_group_ad.ad.video_ad.video.title,
+          ad_group_ad.ad.video_ad.video.duration_millis,
+          segments.date,
+          segments.ad_destination_type,
+          segments.ad_network_type,
+          metrics.impressions,
+          metrics.clicks,
+          metrics.cost_micros,
+          metrics.conversions,
+          metrics.video_views,
+          metrics.video_view_rate,
+          metrics.video_quartile_p25_rate,
+          metrics.video_quartile_p50_rate,
+          metrics.video_quartile_p75_rate,
+          metrics.video_quartile_p100_rate,
+          metrics.average_cpv,
+          metrics.cost_per_conversion
+        FROM ad_group_ad
+        WHERE segments.date DURING ${dateRange}
+          AND campaign.advertising_channel_type = 'VIDEO'
+          AND metrics.impressions > 0
+        ORDER BY metrics.video_views DESC
+      `,
+
+      // NEW CUSTOMER LIFETIME VALUE ANALYSIS
+      customerLifetimeValueIntelligence: `
+        SELECT 
+          campaign.name,
+          ad_group.name,
+          segments.date,
+          segments.new_versus_returning_customers,
+          segments.conversion_action_category,
+          metrics.conversions,
+          metrics.conversions_value,
+          metrics.new_customer_lifetime_value,
+          metrics.existing_customer_lifetime_value,
+          metrics.cost_micros,
+          metrics.clicks
+        FROM campaign
+        WHERE segments.date DURING ${dateRange}
+          AND metrics.conversions > 0
+        ORDER BY metrics.new_customer_lifetime_value DESC
+      `,
+
+      // IMPRESSION SHARE ANALYSIS
+      impressionShareIntelligence: `
+        SELECT 
+          campaign.name,
+          campaign.advertising_channel_type,
+          segments.date,
+          metrics.impression_share,
+          metrics.search_impression_share,
+          metrics.search_budget_lost_impression_share,
+          metrics.search_rank_lost_impression_share,
+          metrics.search_exact_match_impression_share,
+          metrics.content_impression_share,
+          metrics.content_budget_lost_impression_share,
+          metrics.content_rank_lost_impression_share,
+          metrics.impressions,
+          metrics.cost_micros,
+          metrics.conversions
+        FROM campaign
+        WHERE segments.date DURING ${dateRange}
+          AND metrics.impressions > 0
+        ORDER BY metrics.impression_share DESC
+      `
+    };
+
+    return queries[analysisType] || queries.campaignIntelligence;
+  }
+
+  getDateDaysAgo(days) {
+    const date = new Date();
+    date.setDate(date.getDate() - days);
+    return date.toISOString().split('T')[0];
+  }
+
+  // Analysis helper methods
+  static analyzeImpressionShare(campaignData) {
+    const impressionShareMetrics = {
+      search: { total: 0, budget_lost: 0, rank_lost: 0, exact_match: 0 },
+      display: { total: 0, budget_lost: 0, rank_lost: 0 },
+      overall: { campaigns: 0, avg_share: 0 }
+    };
+
+    let totalCampaigns = 0;
+    let totalImpressionShare = 0;
+
+    campaignData.forEach(row => {
+      // Search impression share
+      if (row.metrics?.search_impression_share) {
+        impressionShareMetrics.search.total += row.metrics.search_impression_share;
+        impressionShareMetrics.search.budget_lost += row.metrics?.search_budget_lost_impression_share || 0;
+        impressionShareMetrics.search.rank_lost += row.metrics?.search_rank_lost_impression_share || 0;
+        impressionShareMetrics.search.exact_match += row.metrics?.search_exact_match_impression_share || 0;
+      }
+
+      // Display impression share  
+      if (row.metrics?.content_impression_share) {
+        impressionShareMetrics.display.total += row.metrics.content_impression_share;
+        impressionShareMetrics.display.budget_lost += row.metrics?.content_budget_lost_impression_share || 0;
+        impressionShareMetrics.display.rank_lost += row.metrics?.content_rank_lost_impression_share || 0;
+      }
+
+      // Overall metrics
+      if (row.metrics?.impression_share) {
+        totalImpressionShare += row.metrics.impression_share;
+        totalCampaigns++;
+      }
+    });
+
+    return {
+      searchImpressionShare: {
+        avgShare: `${((impressionShareMetrics.search.total / campaignData.length) * 100).toFixed(1)}%`,
+        budgetLoss: `${((impressionShareMetrics.search.budget_lost / campaignData.length) * 100).toFixed(1)}%`,
+        rankLoss: `${((impressionShareMetrics.search.rank_lost / campaignData.length) * 100).toFixed(1)}%`,
+        exactMatchShare: `${((impressionShareMetrics.search.exact_match / campaignData.length) * 100).toFixed(1)}%`
+      },
+      displayImpressionShare: {
+        avgShare: `${((impressionShareMetrics.display.total / campaignData.length) * 100).toFixed(1)}%`,
+        budgetLoss: `${((impressionShareMetrics.display.budget_lost / campaignData.length) * 100).toFixed(1)}%`,
+        rankLoss: `${((impressionShareMetrics.display.rank_lost / campaignData.length) * 100).toFixed(1)}%`
+      },
+      overallShare: totalCampaigns > 0 ? `${((totalImpressionShare / totalCampaigns) * 100).toFixed(1)}%` : '0%',
+      recommendations: this.generateImpressionShareRecommendations(impressionShareMetrics, campaignData.length)
+    };
+  }
+
+  static generateImpressionShareRecommendations(metrics, campaignCount) {
+    const recommendations = [];
+    
+    const avgBudgetLoss = (metrics.search.budget_lost / campaignCount) * 100;
+    const avgRankLoss = (metrics.search.rank_lost / campaignCount) * 100;
+    
+    if (avgBudgetLoss > 20) {
+      recommendations.push(`High budget loss (${avgBudgetLoss.toFixed(1)}%) - Consider increasing campaign budgets`);
+    }
+    
+    if (avgRankLoss > 15) {
+      recommendations.push(`High rank loss (${avgRankLoss.toFixed(1)}%) - Focus on improving Quality Score and bid competitiveness`);
+    }
+    
+    if (avgBudgetLoss < 5 && avgRankLoss < 5) {
+      recommendations.push('Strong impression share performance - Consider expanding reach or testing new markets');
+    }
+    
+    return recommendations;
+  }
+
+  static analyzeNewCustomerLTV(ltvData) {
+    const customerSegments = {
+      new: { conversions: 0, value: 0, ltv: 0, spend: 0 },
+      returning: { conversions: 0, value: 0, ltv: 0, spend: 0 }
+    };
+
+    ltvData.forEach(row => {
+      const segment = row.segments?.new_versus_returning_customers === 'NEW' ? 'new' : 'returning';
+      
+      customerSegments[segment].conversions += row.metrics?.conversions || 0;
+      customerSegments[segment].value += row.metrics?.conversions_value || 0;
+      customerSegments[segment].spend += (row.metrics?.cost_micros || 0) / 1000000;
+      
+      if (segment === 'new') {
+        customerSegments[segment].ltv += row.metrics?.new_customer_lifetime_value || 0;
+      } else {
+        customerSegments[segment].ltv += row.metrics?.existing_customer_lifetime_value || 0;
+      }
+    });
+
+    return {
+      newCustomers: {
+        ...customerSegments.new,
+        avgLTV: customerSegments.new.conversions > 0 ? 
+          (customerSegments.new.ltv / customerSegments.new.conversions).toFixed(2) : '0',
+        roas: customerSegments.new.spend > 0 ? 
+          (customerSegments.new.value / customerSegments.new.spend).toFixed(2) : '0',
+        ltvRoas: customerSegments.new.spend > 0 ? 
+          (customerSegments.new.ltv / customerSegments.new.spend).toFixed(2) : '0'
+      },
+      returningCustomers: {
+        ...customerSegments.returning,
+        avgLTV: customerSegments.returning.conversions > 0 ? 
+          (customerSegments.returning.ltv / customerSegments.returning.conversions).toFixed(2) : '0',
+        roas: customerSegments.returning.spend > 0 ? 
+          (customerSegments.returning.value / customerSegments.returning.spend).toFixed(2) : '0'
+      },
+      insights: {
+        newCustomerPremium: customerSegments.new.conversions > 0 && customerSegments.returning.conversions > 0 ? 
+          `${(((customerSegments.new.ltv / customerSegments.new.conversions) / (customerSegments.returning.ltv / customerSegments.returning.conversions) - 1) * 100).toFixed(1)}%` : 'Insufficient data'
+      }
+    };
+  }
+}
+
+// Initialize the enhanced intelligence engine
+const intelligenceEngine = new GoogleAdsIntelligenceEngine();
+console.log('🧠 Enhanced Google Ads Intelligence Engine initialized');
 
 // Complete Agency-Ready Google Ads API Server
 import express from 'express';
@@ -1580,6 +2039,216 @@ app.get('/api/ai/learning-analytics', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// ==================== ENHANCED ANALYSIS ENDPOINTS ====================
+
+// IMPRESSION SHARE ANALYSIS
+app.get('/api/intelligence/impression-share/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { period = 'LAST_30_DAYS' } = req.query;
+    
+    console.log(`📊 Impression share analysis: ${accountId}`);
+    
+    const impressionShareQuery = intelligenceEngine.buildQuery('impressionShareIntelligence', period);
+    const result = await executeGAQLQuery(impressionShareQuery, accountId);
+    
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+
+    const impressionShareAnalysis = GoogleAdsIntelligenceEngine.analyzeImpressionShare(result.data);
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      period: period,
+      impressionShareIntelligence: impressionShareAnalysis
+    });
+
+  } catch (error) {
+    console.error('Error in impression share analysis:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PERFORMANCE MAX ANALYSIS
+app.get('/api/intelligence/performance-max/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { period = 'LAST_30_DAYS' } = req.query;
+    
+    console.log(`🚀 Performance Max analysis: ${accountId}`);
+    
+    const pMaxQuery = intelligenceEngine.buildQuery('performanceMaxIntelligence', period);
+    const result = await executeGAQLQuery(pMaxQuery, accountId);
+    
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+
+    const assetGroups = {};
+    result.data.forEach(row => {
+      const assetGroupName = row.asset_group?.name || 'Unknown';
+      if (!assetGroups[assetGroupName]) {
+        assetGroups[assetGroupName] = {
+          impressions: 0, clicks: 0, conversions: 0, spend: 0,
+          finalUrls: row.asset_group?.final_urls || []
+        };
+      }
+      assetGroups[assetGroupName].impressions += row.metrics?.impressions || 0;
+      assetGroups[assetGroupName].clicks += row.metrics?.clicks || 0;
+      assetGroups[assetGroupName].conversions += row.metrics?.conversions || 0;
+      assetGroups[assetGroupName].spend += (row.metrics?.cost_micros || 0) / 1000000;
+    });
+
+    const performanceMaxAnalysis = {
+      totalAssetGroups: Object.keys(assetGroups).length,
+      assetGroupPerformance: Object.keys(assetGroups).map(name => ({
+        assetGroup: name,
+        ...assetGroups[name],
+        efficiency: assetGroups[name].spend > 0 ? 
+          (assetGroups[name].conversions / assetGroups[name].spend).toFixed(2) : '0',
+        conversionRate: assetGroups[name].clicks > 0 ? 
+          `${((assetGroups[name].conversions / assetGroups[name].clicks) * 100).toFixed(2)}%` : '0%'
+      })).sort((a, b) => parseFloat(b.efficiency) - parseFloat(a.efficiency))
+    };
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      period: period,
+      performanceMaxIntelligence: performanceMaxAnalysis
+    });
+
+  } catch (error) {
+    console.error('Error in Performance Max analysis:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// SHOPPING ANALYSIS
+app.get('/api/intelligence/shopping-analysis/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { period = 'LAST_30_DAYS' } = req.query;
+    
+    console.log(`🛒 Shopping analysis: ${accountId}`);
+    
+    const shoppingQuery = intelligenceEngine.buildQuery('shoppingIntelligence', period);
+    const result = await executeGAQLQuery(shoppingQuery, accountId);
+    
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+
+    const categories = {};
+    const brands = {};
+    const products = {};
+
+    result.data.forEach(row => {
+      const category = row.segments?.product_category_level1 || 'Unknown';
+      const brand = row.segments?.product_brand || 'Unknown';
+      const productId = row.segments?.product_item_id || 'Unknown';
+
+      // Category analysis
+      if (!categories[category]) {
+        categories[category] = { impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0 };
+      }
+      categories[category].impressions += row.metrics?.impressions || 0;
+      categories[category].clicks += row.metrics?.clicks || 0;
+      categories[category].conversions += row.metrics?.conversions || 0;
+      categories[category].spend += (row.metrics?.cost_micros || 0) / 1000000;
+      categories[category].revenue += row.metrics?.conversions_value || 0;
+
+      // Brand analysis
+      if (!brands[brand]) {
+        brands[brand] = { impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0 };
+      }
+      brands[brand].impressions += row.metrics?.impressions || 0;
+      brands[brand].clicks += row.metrics?.clicks || 0;
+      brands[brand].conversions += row.metrics?.conversions || 0;
+      brands[brand].spend += (row.metrics?.cost_micros || 0) / 1000000;
+      brands[brand].revenue += row.metrics?.conversions_value || 0;
+
+      // Top products
+      if (!products[productId]) {
+        products[productId] = {
+          title: row.segments?.product_title,
+          price: row.segments?.product_price,
+          impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0
+        };
+      }
+      products[productId].impressions += row.metrics?.impressions || 0;
+      products[productId].clicks += row.metrics?.clicks || 0;
+      products[productId].conversions += row.metrics?.conversions || 0;
+      products[productId].spend += (row.metrics?.cost_micros || 0) / 1000000;
+      products[productId].revenue += row.metrics?.conversions_value || 0;
+    });
+
+    const shoppingAnalysis = {
+      categoryPerformance: Object.keys(categories).map(cat => ({
+        category: cat,
+        ...categories[cat],
+        roas: categories[cat].spend > 0 ? (categories[cat].revenue / categories[cat].spend).toFixed(2) : '0'
+      })).sort((a, b) => parseFloat(b.roas) - parseFloat(a.roas)).slice(0, 10),
+      
+      brandPerformance: Object.keys(brands).map(brand => ({
+        brand: brand,
+        ...brands[brand],
+        roas: brands[brand].spend > 0 ? (brands[brand].revenue / brands[brand].spend).toFixed(2) : '0'
+      })).sort((a, b) => parseFloat(b.roas) - parseFloat(a.roas)).slice(0, 10),
+      
+      topProducts: Object.keys(products).map(productId => ({
+        productId: productId,
+        ...products[productId],
+        roas: products[productId].spend > 0 ? (products[productId].revenue / products[productId].spend).toFixed(2) : '0'
+      })).sort((a, b) => parseFloat(b.roas) - parseFloat(a.roas)).slice(0, 20)
+    };
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      period: period,
+      shoppingIntelligence: shoppingAnalysis
+    });
+
+  } catch (error) {
+    console.error('Error in shopping analysis:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// NEW CUSTOMER LIFETIME VALUE ANALYSIS
+app.get('/api/intelligence/customer-ltv/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { period = 'LAST_30_DAYS' } = req.query;
+    
+    console.log(`💰 Customer LTV analysis: ${accountId}`);
+    
+    const ltvQuery = intelligenceEngine.buildQuery('customerLifetimeValueIntelligence', period);
+    const result = await executeGAQLQuery(ltvQuery, accountId);
+    
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+
+    const ltvAnalysis = GoogleAdsIntelligenceEngine.analyzeNewCustomerLTV(result.data);
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      period: period,
+      customerLTVIntelligence: ltvAnalysis
+    });
+
+  } catch (error) {
+    console.error('Error in customer LTV analysis:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`🚀 Agency Google Ads API Server running on port ${PORT}`);
