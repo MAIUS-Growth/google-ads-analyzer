@@ -1,3 +1,11 @@
+// Add this import at the top of server.js (after your existing imports)
+import SimpleAIMemory from './ai-memory.js';
+
+// Add this after your client setup (around line 15)
+const aiMemory = new SimpleAIMemory();
+console.log('🧠 AI Memory System initialized');
+
+
 // Complete Agency-Ready Google Ads API Server
 import express from 'express';
 import cors from 'cors';
