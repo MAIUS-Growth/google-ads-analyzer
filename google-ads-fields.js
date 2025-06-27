@@ -1,5 +1,5 @@
-// google-ads-fields.js - Centralized Google Ads API field definitions
-// Based on your current server.js queries
+// google-ads-fields.js - FIXED VERSION - Centralized Google Ads API field definitions
+// Compatibility fixes for v19 API
 
 export const CORE_FIELDS = {
   customer: [
@@ -31,14 +31,19 @@ export const CORE_FIELDS = {
     'ad_group.type'
   ],
 
+  // Keywords - FIXED: Separated basic and quality score fields
   keyword: [
     'ad_group_criterion.keyword.text',
     'ad_group_criterion.keyword.match_type',
+    'ad_group_criterion.status'
+  ],
+
+  // Quality Score - SEPARATE resource required
+  qualityScore: [
     'ad_group_criterion.quality_info.quality_score',
     'ad_group_criterion.quality_info.creative_quality_score',
     'ad_group_criterion.quality_info.post_click_quality_score',
-    'ad_group_criterion.quality_info.search_predicted_ctr',
-    'ad_group_criterion.status'
+    'ad_group_criterion.quality_info.search_predicted_ctr'
   ],
 
   ad: [
@@ -67,11 +72,6 @@ export const CORE_FIELDS = {
   searchTerms: [
     'search_term_view.search_term',
     'search_term_view.status'
-  ],
-
-  geographic: [
-    'geographic_view.country_criterion_id',
-    'geographic_view.location_type'
   ]
 };
 
@@ -86,9 +86,9 @@ export const SEGMENT_FIELDS = {
     'segments.year'
   ],
 
+  // FIXED: Removed segments.click_type - causes compatibility issues
   device: [
-    'segments.device',
-    'segments.click_type'
+    'segments.device'
   ],
 
   geographic: [
@@ -104,13 +104,13 @@ export const SEGMENT_FIELDS = {
 };
 
 export const METRIC_FIELDS = {
+  // FIXED: Removed view_through_conversions - causes compatibility issues
   core: [
     'metrics.impressions',
     'metrics.clicks',
     'metrics.cost_micros',
     'metrics.conversions',
-    'metrics.conversions_value',
-    'metrics.view_through_conversions'
+    'metrics.conversions_value'
   ],
 
   rates: [
@@ -135,10 +135,15 @@ export const METRIC_FIELDS = {
     'metrics.video_views',
     'metrics.video_view_rate',
     'metrics.average_cpv'
+  ],
+
+  // Safe additional metrics
+  additional: [
+    'metrics.view_through_conversions'
   ]
 };
 
-// Pre-built query sets for common analysis types
+// FIXED: Pre-built query sets with compatible field combinations
 export const QUERY_TEMPLATES = {
   // Account Overview Query
   accountOverview: (dateRange = 'LAST_30_DAYS') => `
@@ -147,13 +152,13 @@ export const QUERY_TEMPLATES = {
     FROM customer
   `,
 
-  // Campaign Intelligence Query  
+  // FIXED: Campaign Intelligence Query - removed incompatible fields
   campaignIntelligence: (dateRange = 'LAST_30_DAYS') => `
     SELECT 
       ${CORE_FIELDS.customer.slice(0, 1).join(',\n      ')},
       ${CORE_FIELDS.campaign.join(',\n      ')},
-      ${SEGMENT_FIELDS.time.join(',\n      ')},
-      ${SEGMENT_FIELDS.device.slice(0, 2).join(',\n      ')},
+      ${SEGMENT_FIELDS.time.slice(0, 1).join(',\n      ')},
+      ${SEGMENT_FIELDS.device.join(',\n      ')},
       ${METRIC_FIELDS.core.join(',\n      ')},
       ${METRIC_FIELDS.rates.join(',\n      ')}
     FROM campaign 
@@ -162,7 +167,7 @@ export const QUERY_TEMPLATES = {
     ORDER BY metrics.cost_micros DESC
   `,
 
-  // Impression Share Analysis
+  // FIXED: Impression Share Analysis - only compatible fields
   impressionShareIntelligence: (dateRange = 'LAST_30_DAYS') => `
     SELECT 
       ${CORE_FIELDS.campaign.slice(1, 4).join(',\n      ')},
@@ -196,7 +201,7 @@ export const QUERY_TEMPLATES = {
     SELECT 
       ${CORE_FIELDS.campaign.slice(1, 3).join(',\n      ')},
       ${SEGMENT_FIELDS.time.slice(0, 1).join(',\n      ')},
-      ${METRIC_FIELDS.core.slice(0, 5).join(',\n      ')},
+      ${METRIC_FIELDS.core.join(',\n      ')},
       ${METRIC_FIELDS.rates.slice(0, 2).join(',\n      ')}
     FROM campaign
     WHERE segments.date DURING ${dateRange}
@@ -220,7 +225,7 @@ export const QUERY_TEMPLATES = {
     ORDER BY metrics.conversions_value DESC
   `,
 
-  // Search Terms Intelligence
+  // FIXED: Search Terms Intelligence - correct resource fields
   searchTermsIntelligence: (dateRange = 'LAST_30_DAYS') => `
     SELECT 
       ${CORE_FIELDS.searchTerms.join(',\n      ')},
@@ -228,7 +233,7 @@ export const QUERY_TEMPLATES = {
       ${CORE_FIELDS.adGroup.slice(1, 2).join(',\n      ')},
       ${CORE_FIELDS.keyword.slice(0, 2).join(',\n      ')},
       ${SEGMENT_FIELDS.time.slice(0, 1).join(',\n      ')},
-      ${SEGMENT_FIELDS.device.slice(0, 1).join(',\n      ')},
+      ${SEGMENT_FIELDS.device.join(',\n      ')},
       ${METRIC_FIELDS.core.join(',\n      ')},
       ${METRIC_FIELDS.rates.slice(0, 2).join(',\n      ')}
     FROM search_term_view 
@@ -237,22 +242,37 @@ export const QUERY_TEMPLATES = {
     ORDER BY metrics.conversions_value DESC
   `,
 
-  // Keyword Intelligence
+  // FIXED: Keyword Intelligence - WITHOUT quality score (separate endpoint needed)
   keywordIntelligence: (dateRange = 'LAST_30_DAYS') => `
     SELECT 
       ${CORE_FIELDS.campaign.slice(1, 2).join(',\n      ')},
       ${CORE_FIELDS.adGroup.slice(1, 2).join(',\n      ')},
       ${CORE_FIELDS.keyword.join(',\n      ')},
       ${SEGMENT_FIELDS.time.slice(0, 1).join(',\n      ')},
-      ${SEGMENT_FIELDS.device.slice(0, 1).join(',\n      ')},
+      ${SEGMENT_FIELDS.device.join(',\n      ')},
       ${METRIC_FIELDS.core.slice(0, 4).join(',\n      ')},
-      ${METRIC_FIELDS.rates.slice(0, 2).join(',\n      ')},
-      ${METRIC_FIELDS.impressionShare.slice(0, 1).join(',\n      ')}
+      ${METRIC_FIELDS.rates.slice(0, 2).join(',\n      ')}
     FROM keyword_view 
     WHERE segments.date DURING ${dateRange}
       AND ad_group_criterion.status = 'ENABLED'
       AND metrics.impressions > 0
     ORDER BY metrics.cost_micros DESC
+  `,
+
+  // NEW: Separate Quality Score Intelligence - uses ad_group_criterion resource
+  qualityScoreIntelligence: (dateRange = 'LAST_30_DAYS') => `
+    SELECT 
+      ${CORE_FIELDS.campaign.slice(1, 2).join(',\n      ')},
+      ${CORE_FIELDS.adGroup.slice(1, 2).join(',\n      ')},
+      ${CORE_FIELDS.keyword.slice(0, 2).join(',\n      ')},
+      ${CORE_FIELDS.qualityScore.join(',\n      ')},
+      ${METRIC_FIELDS.core.slice(0, 4).join(',\n      ')}
+    FROM ad_group_criterion
+    WHERE segments.date DURING ${dateRange}
+      AND ad_group_criterion.status = 'ENABLED'
+      AND ad_group_criterion.type = 'KEYWORD'
+      AND metrics.impressions > 0
+    ORDER BY ad_group_criterion.quality_info.quality_score ASC
   `,
 
   // Ad Intelligence
@@ -262,7 +282,7 @@ export const QUERY_TEMPLATES = {
       ${CORE_FIELDS.adGroup.slice(1, 2).join(',\n      ')},
       ${CORE_FIELDS.ad.join(',\n      ')},
       ${SEGMENT_FIELDS.time.slice(0, 1).join(',\n      ')},
-      ${SEGMENT_FIELDS.device.slice(0, 1).join(',\n      ')},
+      ${SEGMENT_FIELDS.device.join(',\n      ')},
       ${METRIC_FIELDS.core.slice(0, 4).join(',\n      ')},
       ${METRIC_FIELDS.rates.slice(0, 2).join(',\n      ')}
     FROM ad_group_ad 
@@ -272,23 +292,7 @@ export const QUERY_TEMPLATES = {
     ORDER BY metrics.conversions DESC
   `,
 
-  // Geographic Intelligence
-  locationIntelligence: (dateRange = 'LAST_30_DAYS') => `
-    SELECT 
-      ${CORE_FIELDS.campaign.slice(1, 2).join(',\n      ')},
-      ${CORE_FIELDS.adGroup.slice(1, 2).join(',\n      ')},
-      ${CORE_FIELDS.geographic.join(',\n      ')},
-      ${SEGMENT_FIELDS.geographic.slice(0, 2).join(',\n      ')},
-      ${SEGMENT_FIELDS.time.slice(0, 1).join(',\n      ')},
-      ${METRIC_FIELDS.core.join(',\n      ')},
-      ${METRIC_FIELDS.rates.slice(0, 2).join(',\n      ')}
-    FROM geographic_view 
-    WHERE segments.date DURING ${dateRange}
-      AND metrics.impressions > 0
-    ORDER BY metrics.conversions_value DESC
-  `,
-
-  // Device & Time Analysis
+  // Device & Time Analysis - FIXED
   deviceTimeIntelligence: (dateRange = 'LAST_30_DAYS') => `
     SELECT 
       ${CORE_FIELDS.campaign.slice(1, 2).join(',\n      ')},
@@ -325,7 +329,7 @@ export function buildCustomQuery(fields, resource, conditions = [], orderBy = ''
   return [select, from, where, order].filter(clause => clause).join('\n');
 }
 
-// Commonly used field combinations
+// FIXED: Commonly used field combinations - only compatible fields
 export const FIELD_COMBINATIONS = {
   // Basic campaign metrics
   basicCampaignMetrics: [
@@ -338,18 +342,27 @@ export const FIELD_COMBINATIONS = {
   extendedCampaignMetrics: [
     ...CORE_FIELDS.campaign.slice(1, 3),
     ...SEGMENT_FIELDS.time.slice(0, 1), // date
-    ...SEGMENT_FIELDS.device.slice(0, 1), // device
+    ...SEGMENT_FIELDS.device, // device only
     ...METRIC_FIELDS.core,
     ...METRIC_FIELDS.rates
   ],
 
-  // Keyword performance fields
+  // Keyword performance fields - WITHOUT quality score
   keywordPerformanceFields: [
     ...CORE_FIELDS.campaign.slice(1, 2), // name only
     ...CORE_FIELDS.adGroup.slice(1, 2), // name only  
-    ...CORE_FIELDS.keyword.slice(0, 3), // text, match_type, quality_score
+    ...CORE_FIELDS.keyword, // text, match_type, status
     ...METRIC_FIELDS.core.slice(0, 4), // impressions, clicks, cost, conversions
     ...METRIC_FIELDS.rates.slice(0, 2) // ctr, cpc
+  ],
+
+  // Quality Score fields - SEPARATE combination
+  qualityScoreFields: [
+    ...CORE_FIELDS.campaign.slice(1, 2),
+    ...CORE_FIELDS.adGroup.slice(1, 2),
+    ...CORE_FIELDS.keyword.slice(0, 2), // text, match_type
+    ...CORE_FIELDS.qualityScore,
+    ...METRIC_FIELDS.core.slice(0, 4)
   ],
 
   // Shopping performance fields
