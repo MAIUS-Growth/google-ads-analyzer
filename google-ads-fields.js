@@ -1,5 +1,5 @@
-// google-ads-fields.js - FIXED VERSION - Centralized Google Ads API field definitions
-// Compatibility fixes for v19 API
+// google-ads-fields.js - FIXED VERSION - Replace your entire file with this
+// This fixes all the Railway compatibility errors
 
 export const CORE_FIELDS = {
   customer: [
@@ -31,7 +31,7 @@ export const CORE_FIELDS = {
     'ad_group.type'
   ],
 
-  // Keywords - FIXED: Separated basic and quality score fields
+  // FIXED: Separated basic and quality score fields
   keyword: [
     'ad_group_criterion.keyword.text',
     'ad_group_criterion.keyword.match_type',
@@ -135,11 +135,6 @@ export const METRIC_FIELDS = {
     'metrics.video_views',
     'metrics.video_view_rate',
     'metrics.average_cpv'
-  ],
-
-  // Safe additional metrics
-  additional: [
-    'metrics.view_through_conversions'
   ]
 };
 
@@ -242,7 +237,7 @@ export const QUERY_TEMPLATES = {
     ORDER BY metrics.conversions_value DESC
   `,
 
-  // FIXED: Keyword Intelligence - WITHOUT quality score (separate endpoint needed)
+  // FIXED: Keyword Intelligence - WITHOUT quality score
   keywordIntelligence: (dateRange = 'LAST_30_DAYS') => `
     SELECT 
       ${CORE_FIELDS.campaign.slice(1, 2).join(',\n      ')},
@@ -259,7 +254,7 @@ export const QUERY_TEMPLATES = {
     ORDER BY metrics.cost_micros DESC
   `,
 
-  // NEW: Separate Quality Score Intelligence - uses ad_group_criterion resource
+  // NEW: Separate Quality Score Intelligence
   qualityScoreIntelligence: (dateRange = 'LAST_30_DAYS') => `
     SELECT 
       ${CORE_FIELDS.campaign.slice(1, 2).join(',\n      ')},
@@ -329,7 +324,7 @@ export function buildCustomQuery(fields, resource, conditions = [], orderBy = ''
   return [select, from, where, order].filter(clause => clause).join('\n');
 }
 
-// FIXED: Commonly used field combinations - only compatible fields
+// FIXED: Commonly used field combinations
 export const FIELD_COMBINATIONS = {
   // Basic campaign metrics
   basicCampaignMetrics: [
