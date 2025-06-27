@@ -7,6 +7,40 @@ import SimpleAIMemory from './ai-memory.js';
 // 🎯 Import our clean, organized fields file
 import { QUERY_TEMPLATES, FIELD_COMBINATIONS, buildCustomQuery } from './google-ads-fields.js';
 
+// ADD THESE IMPORTS TO THE TOP OF YOUR SERVER.JS FILE
+// After your existing imports
+
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { GoogleAdsApi } from 'google-ads-api';
+import SimpleAIMemory from './ai-memory.js';
+// 🎯 ADD THIS NEW IMPORT:
+import DynamicAnalysisEngine from './dynamic-analysis-engine.js';
+// 🎯 Import our clean, organized fields file
+import { QUERY_TEMPLATES, FIELD_COMBINATIONS, buildCustomQuery } from './google-ads-fields.js';
+
+// ==================== CONFIGURATION ====================
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+// Set up Google Ads client
+const client = new GoogleAdsApi({
+  client_id: process.env.GOOGLE_ADS_CLIENT_ID,
+  client_secret: process.env.GOOGLE_ADS_CLIENT_SECRET,
+  developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
+});
+
+// Initialize AI Memory System
+const aiMemory = new SimpleAIMemory();
+console.log('🧠 AI Memory System initialized');
+
+// 🎯 ADD THIS NEW INITIALIZATION:
+const dynamicEngine = new DynamicAnalysisEngine();
+console.log('🚀 Dynamic Analysis Engine initialized');
+
 // ==================== CONFIGURATION ====================
 dotenv.config();
 
