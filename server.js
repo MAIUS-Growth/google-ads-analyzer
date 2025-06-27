@@ -809,56 +809,98 @@ app.get('/api/chatgpt/ad-copy-analysis/:accountId', async (req, res) => {
   }
 });
 
+// FIXED Quality Score endpoint - replace the existing one in server.js
+
 app.get('/api/chatgpt/quality-score/:accountId', async (req, res) => {
   try {
     const { accountId } = req.params;
     
-    // 🎯 Custom quality score query using field combinations
-    const qualityScoreQuery = buildCustomQuery(
-      [
-        ...FIELD_COMBINATIONS.keywordPerformanceFields,
-        'ad_group_criterion.quality_info.quality_score',
-        'ad_group_criterion.quality_info.creative_quality_score',
-        'ad_group_criterion.quality_info.post_click_quality_score'
-      ],
-      'keyword_view',
-      [
-        'segments.date DURING LAST_30_DAYS',
-        'ad_group_criterion.status = "ENABLED"',
-        'metrics.impressions > 0'
-      ],
-      'ad_group_criterion.quality_info.quality_score ASC, metrics.cost_micros DESC'
-    ) + '\nLIMIT 100';
+    console.log(`Quality Score analysis requested: ${accountId}`);
+    
+    // 🎯 FIXED: Use the new separate quality score query template
+    const qualityScoreQuery = QUERY_TEMPLATES.qualityScoreIntelligence() + '\nLIMIT 100';
     
     const result = await executeGAQLQuery(qualityScoreQuery, accountId);
     
     if (!result.success) {
-      return res.status(500).json(result);
+      return res.status(500).json({
+        success: false,
+        error: result.error,
+        message: 'Quality Score analysis failed - this may indicate limited data or API access issues'
+      });
     }
     
-    const validKeywords = result.data.filter(kw => kw.ad_group_criterion?.quality_info?.quality_score);
+    // Filter for valid quality score data
+    const validKeywords = result.data.filter(kw => 
+      kw.ad_group_criterion?.quality_info?.quality_score && 
+      kw.ad_group_criterion?.quality_info?.quality_score > 0
+    );
     
     if (validKeywords.length === 0) {
       return res.json({ 
         success: true,
-        message: "No Quality Score data available",
-        accountId: accountId
+        message: "No Quality Score data available for this account",
+        accountId: accountId,
+        qualityScoreAnalysis: {
+          summary: {
+            averageQualityScore: 'N/A',
+            totalKeywords: 0,
+            lowQualityCount: 0
+          },
+          lowQualityKeywords: [],
+          recommendations: [
+            'No Quality Score data available',
+            'This could be due to limited keyword activity or account setup',
+            'Ensure keywords have sufficient impressions to generate Quality Score data'
+          ]
+        }
       });
     }
     
+    // Calculate quality score metrics
     const qualityScores = validKeywords.map(kw => kw.ad_group_criterion.quality_info.quality_score);
     const avgQualityScore = qualityScores.reduce((sum, qs) => sum + qs, 0) / qualityScores.length;
     
+    // Find low quality keywords with significant spend
     const lowQualityKeywords = validKeywords
       .filter(kw => kw.ad_group_criterion.quality_info.quality_score <= 5)
       .map(kw => ({
-        keyword: kw.ad_group_criterion?.keyword?.text,
-        campaign: kw.campaign?.name,
+        keyword: kw.ad_group_criterion?.keyword?.text || 'Unknown',
+        campaign: kw.campaign?.name || 'Unknown Campaign',
+        adGroup: kw.ad_group?.name || 'Unknown Ad Group',
         qualityScore: kw.ad_group_criterion.quality_info.quality_score,
-        spend: ((kw.metrics?.cost_micros || 0) / 1000000).toFixed(2)
+        spend: ((kw.metrics?.cost_micros || 0) / 1000000).toFixed(2),
+        clicks: kw.metrics?.clicks || 0,
+        conversions: kw.metrics?.conversions || 0,
+        creativeQuality: kw.ad_group_criterion.quality_info?.creative_quality_score || 'N/A',
+        landingPageQuality: kw.ad_group_criterion.quality_info?.post_click_quality_score || 'N/A'
       }))
       .sort((a, b) => parseFloat(b.spend) - parseFloat(a.spend))
       .slice(0, 20);
+
+    // Generate smart recommendations based on data
+    const recommendations = [];
+    
+    if (avgQualityScore < 6) {
+      recommendations.push("Account average Quality Score is below 6 - focus on fundamental improvements");
+      recommendations.push("Review ad relevance by including target keywords in headlines");
+      recommendations.push("Optimize landing pages for mobile experience and speed");
+    } else if (avgQualityScore < 7) {
+      recommendations.push("Good Quality Score foundation - focus on incremental improvements");
+      recommendations.push("Test ad copy variations to improve CTR");
+    } else {
+      recommendations.push("Strong Quality Score performance - focus on expansion opportunities");
+      recommendations.push("Consider testing new keyword variations with current high-quality ads");
+    }
+
+    if (lowQualityKeywords.length > 0) {
+      recommendations.push(`${lowQualityKeywords.length} keywords with QS ≤5 need immediate attention`);
+      
+      const totalWastedSpend = lowQualityKeywords.reduce((sum, kw) => sum + parseFloat(kw.spend), 0);
+      if (totalWastedSpend > 100) {
+        recommendations.push(`$${totalWastedSpend.toFixed(2)} monthly spend on low-quality keywords - high optimization priority`);
+      }
+    }
     
     res.json({
       success: true,
@@ -867,20 +909,30 @@ app.get('/api/chatgpt/quality-score/:accountId', async (req, res) => {
         summary: {
           averageQualityScore: avgQualityScore.toFixed(1),
           totalKeywords: validKeywords.length,
-          lowQualityCount: lowQualityKeywords.length
+          lowQualityCount: lowQualityKeywords.length,
+          qualityDistribution: {
+            excellent: qualityScores.filter(qs => qs >= 8).length,
+            good: qualityScores.filter(qs => qs >= 6 && qs < 8).length,
+            poor: qualityScores.filter(qs => qs < 6).length
+          }
         },
         lowQualityKeywords: lowQualityKeywords,
-        recommendations: [
-          "Focus on keywords with QS ≤5 and high spend first",
-          "Improve ad relevance by including target keywords in headlines",
-          "Optimize landing pages for mobile experience and speed"
-        ]
+        recommendations: recommendations,
+        dataQuality: {
+          keywordsWithQS: validKeywords.length,
+          totalKeywordsAnalyzed: result.data.length,
+          dataCompleteness: `${((validKeywords.length / result.data.length) * 100).toFixed(1)}%`
+        }
       }
     });
     
   } catch (error) {
     console.error('Error in Quality Score analysis:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      success: false,
+      error: error.message,
+      message: 'Quality Score analysis failed - this may indicate API compatibility issues'
+    });
   }
 });
 
@@ -1151,6 +1203,227 @@ app.get('/api/intelligence/customer-ltv/:accountId', async (req, res) => {
   } catch (error) {
     console.error('Error in customer LTV analysis:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Add this endpoint to server.js - Complete Enhanced Audit
+
+app.get('/api/intelligence/complete-audit/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { period = 'LAST_30_DAYS' } = req.query;
+    
+    console.log(`🔍 Complete enhanced audit: ${accountId}, period: ${period}`);
+    
+    const auditResults = {
+      accountId: accountId,
+      period: period,
+      auditSections: {},
+      overallScore: 0,
+      priorityRecommendations: [],
+      executiveSummary: ''
+    };
+
+    // 1. Basic Campaign Analysis
+    try {
+      const campaignQuery = QUERY_TEMPLATES.campaignIntelligence(period);
+      const campaignResult = await executeGAQLQuery(campaignQuery, accountId);
+      
+      if (campaignResult.success && campaignResult.data.length > 0) {
+        const campaigns = campaignResult.data;
+        const totalSpend = campaigns.reduce((sum, c) => sum + (c.metrics?.cost_micros || 0), 0) / 1000000;
+        const totalConversions = campaigns.reduce((sum, c) => sum + (c.metrics?.conversions || 0), 0);
+        const totalClicks = campaigns.reduce((sum, c) => sum + (c.metrics?.clicks || 0), 0);
+        const avgConversionRate = totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0;
+        
+        auditResults.auditSections.campaignHealth = {
+          score: avgConversionRate > 2 ? 8 : avgConversionRate > 1 ? 6 : 3,
+          totalCampaigns: campaigns.length,
+          activeCampaigns: campaigns.filter(c => c.campaign?.status === 2).length,
+          totalSpend: totalSpend.toFixed(2),
+          overallConversionRate: avgConversionRate.toFixed(2) + '%',
+          findings: avgConversionRate < 1 ? ['Low conversion rate needs immediate attention'] : ['Campaign performance is acceptable']
+        };
+      }
+    } catch (error) {
+      console.log('Campaign analysis failed:', error.message);
+      auditResults.auditSections.campaignHealth = { score: 0, error: 'Data unavailable' };
+    }
+
+    // 2. Impression Share Analysis
+    try {
+      const impressionQuery = QUERY_TEMPLATES.impressionShareIntelligence(period);
+      const impressionResult = await executeGAQLQuery(impressionQuery, accountId);
+      
+      if (impressionResult.success && impressionResult.data.length > 0) {
+        const impressionAnalysis = GoogleAdsIntelligenceEngine.analyzeImpressionShare(impressionResult.data);
+        
+        const avgShare = parseFloat(impressionAnalysis.searchImpressionShare.avgShare.replace('%', ''));
+        const budgetLoss = parseFloat(impressionAnalysis.searchImpressionShare.budgetLoss.replace('%', ''));
+        
+        auditResults.auditSections.impressionShare = {
+          score: avgShare > 80 ? 9 : avgShare > 60 ? 7 : avgShare > 40 ? 5 : 2,
+          averageImpressionShare: impressionAnalysis.searchImpressionShare.avgShare,
+          budgetLostShare: impressionAnalysis.searchImpressionShare.budgetLoss,
+          rankLostShare: impressionAnalysis.searchImpressionShare.rankLoss,
+          findings: impressionAnalysis.recommendations
+        };
+      }
+    } catch (error) {
+      console.log('Impression Share analysis failed:', error.message);
+      auditResults.auditSections.impressionShare = { score: 0, error: 'Data unavailable' };
+    }
+
+    // 3. Shopping Campaign Analysis (if applicable)
+    try {
+      const shoppingQuery = QUERY_TEMPLATES.shoppingIntelligence(period);
+      const shoppingResult = await executeGAQLQuery(shoppingQuery, accountId);
+      
+      if (shoppingResult.success && shoppingResult.data.length > 0) {
+        const totalProducts = shoppingResult.data.length;
+        const avgRoas = shoppingResult.data.reduce((sum, p) => {
+          const revenue = p.metrics?.conversions_value || 0;
+          const spend = (p.metrics?.cost_micros || 0) / 1000000;
+          return sum + (spend > 0 ? revenue / spend : 0);
+        }, 0) / totalProducts;
+        
+        auditResults.auditSections.shoppingPerformance = {
+          score: avgRoas > 4 ? 9 : avgRoas > 2 ? 7 : avgRoas > 1 ? 5 : 2,
+          totalProducts: totalProducts,
+          averageROAS: avgRoas.toFixed(2),
+          findings: [
+            avgRoas > 3 ? 'Strong shopping performance' : 'Shopping campaigns need optimization',
+            `${totalProducts} products actively advertising`
+          ]
+        };
+      } else {
+        auditResults.auditSections.shoppingPerformance = {
+          score: 0,
+          findings: ['No shopping campaigns detected']
+        };
+      }
+    } catch (error) {
+      console.log('Shopping analysis failed:', error.message);
+      auditResults.auditSections.shoppingPerformance = { score: 0, error: 'Shopping data unavailable' };
+    }
+
+    // 4. Performance Max Analysis
+    try {
+      const pMaxQuery = QUERY_TEMPLATES.performanceMaxIntelligence(period);
+      const pMaxResult = await executeGAQLQuery(pMaxQuery, accountId);
+      
+      if (pMaxResult.success && pMaxResult.data.length > 0) {
+        const campaigns = pMaxResult.data;
+        const totalSpend = campaigns.reduce((sum, c) => sum + (c.metrics?.cost_micros || 0), 0) / 1000000;
+        const totalRevenue = campaigns.reduce((sum, c) => sum + (c.metrics?.conversions_value || 0), 0);
+        const roas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
+        
+        auditResults.auditSections.performanceMax = {
+          score: roas > 4 ? 9 : roas > 2 ? 7 : roas > 1 ? 5 : 2,
+          campaignCount: campaigns.length,
+          totalSpend: totalSpend.toFixed(2),
+          roas: roas.toFixed(2),
+          findings: [
+            roas > 3 ? 'Performance Max campaigns performing well' : 'Performance Max needs optimization',
+            `${campaigns.length} Performance Max campaigns active`
+          ]
+        };
+      } else {
+        auditResults.auditSections.performanceMax = {
+          score: 0,
+          findings: ['No Performance Max campaigns detected']
+        };
+      }
+    } catch (error) {
+      console.log('Performance Max analysis failed:', error.message);
+      auditResults.auditSections.performanceMax = { score: 0, error: 'Performance Max data unavailable' };
+    }
+
+    // 5. Customer LTV Analysis
+    try {
+      const ltvQuery = QUERY_TEMPLATES.customerLifetimeValueIntelligence(period);
+      const ltvResult = await executeGAQLQuery(ltvQuery, accountId);
+      
+      if (ltvResult.success && ltvResult.data.length > 0) {
+        const ltvAnalysis = GoogleAdsIntelligenceEngine.analyzeNewCustomerLTV(ltvResult.data);
+        
+        const newCustomerROAS = parseFloat(ltvAnalysis.newCustomers.roas);
+        const returningROAS = parseFloat(ltvAnalysis.returningCustomers.roas);
+        
+        auditResults.auditSections.customerLTV = {
+          score: (newCustomerROAS + returningROAS) / 2 > 3 ? 8 : (newCustomerROAS + returningROAS) / 2 > 2 ? 6 : 3,
+          newCustomerROAS: ltvAnalysis.newCustomers.roas,
+          returningCustomerROAS: ltvAnalysis.returningCustomers.roas,
+          newCustomerValue: ltvAnalysis.newCustomers.avgOrderValue,
+          returningCustomerValue: ltvAnalysis.returningCustomers.avgOrderValue,
+          findings: [
+            newCustomerROAS > returningROAS ? 'Strong new customer acquisition' : 'Focus on retaining existing customers',
+            `New customer ROAS: ${ltvAnalysis.newCustomers.roas}, Returning: ${ltvAnalysis.returningCustomers.roas}`
+          ]
+        };
+      }
+    } catch (error) {
+      console.log('Customer LTV analysis failed:', error.message);
+      auditResults.auditSections.customerLTV = { score: 0, error: 'Customer LTV data unavailable' };
+    }
+
+    // Calculate Overall Score
+    const sections = Object.values(auditResults.auditSections).filter(section => section.score !== undefined);
+    auditResults.overallScore = sections.length > 0 
+      ? Math.round(sections.reduce((sum, section) => sum + section.score, 0) / sections.length)
+      : 0;
+
+    // Generate Priority Recommendations
+    auditResults.priorityRecommendations = [];
+    
+    if (auditResults.auditSections.campaignHealth?.score < 5) {
+      auditResults.priorityRecommendations.push({
+        priority: 'HIGH',
+        area: 'Campaign Performance',
+        issue: 'Low conversion rates across campaigns',
+        action: 'Audit landing pages and improve conversion optimization'
+      });
+    }
+
+    if (auditResults.auditSections.impressionShare?.score < 6) {
+      auditResults.priorityRecommendations.push({
+        priority: 'MEDIUM',
+        area: 'Market Share',
+        issue: 'Missing impression share opportunities',
+        action: 'Increase budgets or improve Quality Score to capture more traffic'
+      });
+    }
+
+    if (auditResults.auditSections.shoppingPerformance?.score < 5 && auditResults.auditSections.shoppingPerformance?.score > 0) {
+      auditResults.priorityRecommendations.push({
+        priority: 'HIGH',
+        area: 'Shopping Campaigns',
+        issue: 'Poor shopping campaign ROAS',
+        action: 'Review product feed quality and bidding strategy'
+      });
+    }
+
+    // Executive Summary
+    const scoreGrade = auditResults.overallScore >= 8 ? 'Excellent' : 
+                     auditResults.overallScore >= 6 ? 'Good' : 
+                     auditResults.overallScore >= 4 ? 'Needs Improvement' : 'Critical Issues';
+    
+    auditResults.executiveSummary = `Account overall health: ${scoreGrade} (${auditResults.overallScore}/10). ` +
+      `${auditResults.priorityRecommendations.length} priority recommendations identified. ` +
+      `${sections.length} areas analyzed successfully.`;
+
+    res.json({
+      success: true,
+      completeAudit: auditResults
+    });
+
+  } catch (error) {
+    console.error('Error in complete enhanced audit:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message,
+      message: 'Complete audit failed - some data may be unavailable'
+    });
   }
 });
 
