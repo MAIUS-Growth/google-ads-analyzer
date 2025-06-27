@@ -1,23 +1,12 @@
-// ==================== ALL IMPORTS AT THE TOP ====================
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import { GoogleAdsApi } from 'google-ads-api';
-import SimpleAIMemory from './ai-memory.js';
-// 🎯 Import our clean, organized fields file
-import { QUERY_TEMPLATES, FIELD_COMBINATIONS, buildCustomQuery } from './google-ads-fields.js';
-
-// ADD THESE IMPORTS TO THE TOP OF YOUR SERVER.JS FILE
-// After your existing imports
+// ==================== COMPLETE SERVER.JS - GOOGLE ADS FLEXIBLE ANALYZER ====================
+// Replace your entire server.js file with this complete version
 
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { GoogleAdsApi } from 'google-ads-api';
 import SimpleAIMemory from './ai-memory.js';
-// 🎯 ADD THIS NEW IMPORT:
 import DynamicAnalysisEngine from './dynamic-analysis-engine.js';
-// 🎯 Import our clean, organized fields file
 import { QUERY_TEMPLATES, FIELD_COMBINATIONS, buildCustomQuery } from './google-ads-fields.js';
 
 // ==================== CONFIGURATION ====================
@@ -33,53 +22,21 @@ const client = new GoogleAdsApi({
   developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
 });
 
-// Initialize AI Memory System
+// Initialize AI Memory System and Dynamic Analysis Engine
 const aiMemory = new SimpleAIMemory();
-console.log('🧠 AI Memory System initialized');
-
-// 🎯 ADD THIS NEW INITIALIZATION:
 const dynamicEngine = new DynamicAnalysisEngine();
-console.log('🚀 Dynamic Analysis Engine initialized');
 
-// ==================== CONFIGURATION ====================
-dotenv.config();
-
-const app = express();
-const PORT = process.env.PORT || 3001;
-
-// Set up Google Ads client
-const client = new GoogleAdsApi({
-  client_id: process.env.GOOGLE_ADS_CLIENT_ID,
-  client_secret: process.env.GOOGLE_ADS_CLIENT_SECRET,
-  developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
-});
-
-// Initialize AI Memory System
-const aiMemory = new SimpleAIMemory();
 console.log('🧠 AI Memory System initialized');
+console.log('🚀 Dynamic Analysis Engine initialized');
 
 // ==================== ENHANCED GOOGLE ADS INTELLIGENCE ENGINE ====================
 
 class GoogleAdsIntelligenceEngine {
   constructor() {
-    // Much cleaner! No massive field definitions
     this.supportedAnalysisTypes = Object.keys(QUERY_TEMPLATES);
     console.log(`🔧 Intelligence Engine supports: ${this.supportedAnalysisTypes.join(', ')}`);
   }
 
-  // ✨ MUCH CLEANER QUERY BUILDING
-  buildQuery(analysisType, dateRange = 'LAST_30_DAYS', filters = {}) {
-    // Use our pre-built query templates
-    if (QUERY_TEMPLATES[analysisType]) {
-      return QUERY_TEMPLATES[analysisType](dateRange);
-    }
-
-    // Fallback to campaign intelligence for unknown types
-    console.log(`⚠️ Unknown analysis type: ${analysisType}, using campaignIntelligence`);
-    return QUERY_TEMPLATES.campaignIntelligence(dateRange);
-  }
-
-  // Analysis methods stay the same
   static analyzeImpressionShare(campaignData) {
     const impressionShareMetrics = {
       search: { total: 0, budget_lost: 0, rank_lost: 0 },
@@ -163,7 +120,6 @@ class GoogleAdsIntelligenceEngine {
   }
 }
 
-// Initialize the enhanced intelligence engine
 const intelligenceEngine = new GoogleAdsIntelligenceEngine();
 console.log('🧠 Enhanced Google Ads Intelligence Engine initialized');
 
@@ -243,27 +199,51 @@ function validateDateRange(period) {
 
 app.get('/api/test', (req, res) => {
   res.json({ 
-    message: 'Agency Google Ads API Server is running! (Refactored with Fields File)',
+    message: 'Agency Google Ads API Server with FLEXIBLE ANALYSIS! 🚀',
     timestamp: new Date().toISOString(),
-    availableQueries: Object.keys(QUERY_TEMPLATES),
-    endpoints: [
-      'GET /api/chatgpt/accounts - List all accounts',
-      'GET /api/chatgpt/account/:id - Account overview',
-      'GET /api/chatgpt/metrics - Flexible metrics',
-      'GET /api/chatgpt/analysis/:id - Statistical analysis',
-      'GET /api/chatgpt/keyword-analysis/:id - Keyword gap analysis',
-      'GET /api/chatgpt/search-terms/:id - Search terms mining',
-      'GET /api/chatgpt/ad-copy-analysis/:id - Ad copy performance',
-      'GET /api/chatgpt/quality-score/:id - Quality Score analysis',
-      'GET /api/intelligence/shopping-analysis/:id - Shopping campaign analysis',
-      'GET /api/intelligence/performance-max/:id - Performance Max analysis',
-      'GET /api/intelligence/impression-share/:id - Impression share analysis',
-      'GET /api/intelligence/customer-ltv/:id - Customer lifetime value analysis',
-      'GET /api/chatgpt/smart-analysis/:id - AI-powered smart analysis',
-      'GET /api/ai/insights/:id - AI learning insights',
-      'GET /api/ai/learning-dashboard - AI learning dashboard',
-      'POST /api/ai/store-recommendation - Store AI recommendation',
-      'POST /api/execute-query - Custom GAQL queries'
+    status: '✅ ALL SYSTEMS OPERATIONAL',
+    capabilities: [
+      '🗣️ Natural Language Queries - Ask anything!',
+      '📊 Flexible Date Comparisons - Any period vs any period',
+      '🔍 Smart Campaign Search - Find campaigns by pattern/theme',
+      '🌍 Seasonal Analysis - Understand seasonal patterns',
+      '⚡ Dynamic Query Building - No more rigid date ranges',
+      '🧠 AI Learning System - Gets smarter over time',
+      '🎯 Complete Enhanced Audits - Comprehensive account health'
+    ],
+    flexibleEndpoints: [
+      {
+        method: 'POST',
+        path: '/api/chatgpt/flexible-query',
+        description: 'Natural language analysis - ask anything!',
+        example: { 
+          accountId: "533-365-4586", 
+          query: "Compare July 4th performance this year vs last year" 
+        }
+      },
+      {
+        method: 'POST',
+        path: '/api/chatgpt/compare-periods',
+        description: 'Compare any two date periods',
+        example: { 
+          accountId: "533-365-4586",
+          period1: { start: "2024-07-01", end: "2024-07-15", label: "July 4th 2024" },
+          period2: { start: "2023-07-01", end: "2023-07-15", label: "July 4th 2023" }
+        }
+      },
+      {
+        method: 'GET',
+        path: '/api/chatgpt/example-queries/:accountId',
+        description: 'See example flexible queries',
+        example: '/api/chatgpt/example-queries/533-365-4586'
+      }
+    ],
+    exampleFlexibleQueries: [
+      "Compare July 4th performance this year vs last year",
+      "Show me campaigns with 'sale' in the name from Q4 2023",
+      "How did summer campaigns perform compared to winter?",
+      "Find conversion campaigns from last December",
+      "Compare this month vs same month last year"
     ]
   });
 });
@@ -342,16 +322,12 @@ app.get('/api/chatgpt/accounts', async (req, res) => {
         }
         
         const customer = client.Customer(customerConfig);
-        
-        // 🎯 Using our clean query template
         const customerQuery = QUERY_TEMPLATES.accountOverview();
-        
         const customerInfo = await customer.query(customerQuery);
         
         if (customerInfo && customerInfo.length > 0) {
           const info = customerInfo[0].customer;
           
-          // 🎯 Using field combinations for cleaner queries
           const campaignQuery = buildCustomQuery(
             FIELD_COMBINATIONS.basicCampaignMetrics,
             'campaign',
@@ -435,7 +411,7 @@ app.get('/api/chatgpt/accounts', async (req, res) => {
         totalMonthlySpend: `$${totalSpend.toFixed(2)}`,
         managedClients: accountDetails.filter(a => a.type === 'client' && a.status === 'accessible').length
       },
-      message: `Loaded ${successCount}/${knownAccounts.length} accounts from your MCC (Refactored!)`
+      message: `Loaded ${successCount}/${knownAccounts.length} accounts from your MCC`
     });
     
   } catch (error) {
@@ -455,9 +431,7 @@ app.get('/api/chatgpt/account/:accountId', async (req, res) => {
     
     console.log(`Account analysis requested: ${accountId}, period: ${validPeriod}`);
     
-    // 🎯 Clean query using our template
     const campaignQuery = QUERY_TEMPLATES.campaignIntelligence(validPeriod);
-    
     const result = await executeGAQLQuery(campaignQuery, accountId);
     
     if (!result.success) {
@@ -514,64 +488,6 @@ app.get('/api/chatgpt/account/:accountId', async (req, res) => {
   }
 });
 
-// ✨ MUCH CLEANER ENDPOINT DEFINITIONS
-app.get('/api/chatgpt/keyword-analysis/:accountId', async (req, res) => {
-  try {
-    const { accountId } = req.params;
-    const { period = 'LAST_30_DAYS' } = req.query;
-    const validPeriod = validateDateRange(period);
-    
-    console.log(`Keyword analysis requested: ${accountId}, period: ${validPeriod}`);
-    
-    // 🎯 One line query building!
-    const keywordQuery = QUERY_TEMPLATES.keywordIntelligence(validPeriod) + '\nLIMIT 300';
-    
-    const result = await executeGAQLQuery(keywordQuery, accountId);
-    
-    if (!result.success) {
-      return res.status(500).json(result);
-    }
-    
-    // Processing logic stays the same
-    const keywords = result.data.map(kw => ({
-      keyword: kw.ad_group_criterion?.keyword?.text,
-      matchType: kw.ad_group_criterion?.keyword?.match_type,
-      campaign: kw.campaign?.name,
-      spend: (kw.metrics?.cost_micros || 0) / 1000000,
-      conversions: kw.metrics?.conversions || 0,
-      clicks: kw.metrics?.clicks || 0,
-      conversionRate: (kw.metrics?.clicks || 0) > 0 ? (kw.metrics?.conversions || 0) / (kw.metrics?.clicks || 0) * 100 : 0
-    }));
-    
-    const topPerformers = keywords
-      .filter(kw => kw.conversionRate > 2 && kw.spend > 50)
-      .sort((a, b) => b.conversionRate - a.conversionRate)
-      .slice(0, 15);
-    
-    const underperformers = keywords
-      .filter(kw => kw.conversionRate < 0.5 && kw.spend > 100)
-      .sort((a, b) => b.spend - a.spend)
-      .slice(0, 15);
-    
-    res.json({
-      success: true,
-      accountId: accountId,
-      period: validPeriod,
-      keywordAnalysis: {
-        totalKeywords: keywords.length,
-        topPerformers: topPerformers,
-        underperformers: underperformers
-      }
-    });
-    
-  } catch (error) {
-    console.error('Error in keyword analysis:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Continue with all other endpoints using the same clean pattern...
-
 app.get('/api/chatgpt/metrics', async (req, res) => {
   try {
     const { accountId = "494-589-7843", period = "LAST_30_DAYS" } = req.query;
@@ -579,9 +495,7 @@ app.get('/api/chatgpt/metrics', async (req, res) => {
     
     console.log(`Metrics requested: ${accountId}, period: ${validPeriod}`);
     
-    // 🎯 Clean query using template
     const metricsQuery = QUERY_TEMPLATES.campaignIntelligence(validPeriod);
-    
     const result = await executeGAQLQuery(metricsQuery, accountId);
     
     if (!result.success) {
@@ -625,9 +539,7 @@ app.get('/api/chatgpt/analysis/:accountId', async (req, res) => {
     
     console.log(`Smart analysis requested: ${accountId}, period: ${validPeriod}`);
     
-    // 🎯 Clean query using template
     const analysisQuery = QUERY_TEMPLATES.deviceTimeIntelligence(validPeriod);
-    
     const result = await executeGAQLQuery(analysisQuery, accountId);
     
     if (!result.success) {
@@ -703,6 +615,58 @@ app.get('/api/chatgpt/analysis/:accountId', async (req, res) => {
   }
 });
 
+app.get('/api/chatgpt/keyword-analysis/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { period = 'LAST_30_DAYS' } = req.query;
+    const validPeriod = validateDateRange(period);
+    
+    console.log(`Keyword analysis requested: ${accountId}, period: ${validPeriod}`);
+    
+    const keywordQuery = QUERY_TEMPLATES.keywordIntelligence(validPeriod) + '\nLIMIT 300';
+    const result = await executeGAQLQuery(keywordQuery, accountId);
+    
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+    
+    const keywords = result.data.map(kw => ({
+      keyword: kw.ad_group_criterion?.keyword?.text,
+      matchType: kw.ad_group_criterion?.keyword?.match_type,
+      campaign: kw.campaign?.name,
+      spend: (kw.metrics?.cost_micros || 0) / 1000000,
+      conversions: kw.metrics?.conversions || 0,
+      clicks: kw.metrics?.clicks || 0,
+      conversionRate: (kw.metrics?.clicks || 0) > 0 ? (kw.metrics?.conversions || 0) / (kw.metrics?.clicks || 0) * 100 : 0
+    }));
+    
+    const topPerformers = keywords
+      .filter(kw => kw.conversionRate > 2 && kw.spend > 50)
+      .sort((a, b) => b.conversionRate - a.conversionRate)
+      .slice(0, 15);
+    
+    const underperformers = keywords
+      .filter(kw => kw.conversionRate < 0.5 && kw.spend > 100)
+      .sort((a, b) => b.spend - a.spend)
+      .slice(0, 15);
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      period: validPeriod,
+      keywordAnalysis: {
+        totalKeywords: keywords.length,
+        topPerformers: topPerformers,
+        underperformers: underperformers
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in keyword analysis:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/chatgpt/search-terms/:accountId', async (req, res) => {
   try {
     const { accountId } = req.params;
@@ -711,9 +675,7 @@ app.get('/api/chatgpt/search-terms/:accountId', async (req, res) => {
     
     console.log(`Search terms analysis requested: ${accountId}, period: ${validPeriod}`);
     
-    // 🎯 Clean query using template
     const searchTermsQuery = QUERY_TEMPLATES.searchTermsIntelligence(validPeriod) + '\nLIMIT 500';
-    
     const result = await executeGAQLQuery(searchTermsQuery, accountId);
     
     if (!result.success) {
@@ -779,9 +741,7 @@ app.get('/api/chatgpt/ad-copy-analysis/:accountId', async (req, res) => {
     
     console.log(`Ad copy analysis requested: ${accountId}, period: ${validPeriod}`);
     
-    // 🎯 Clean query using template
     const adCopyQuery = QUERY_TEMPLATES.adIntelligence(validPeriod) + '\nLIMIT 100';
-    
     const result = await executeGAQLQuery(adCopyQuery, accountId);
     
     if (!result.success) {
@@ -843,17 +803,13 @@ app.get('/api/chatgpt/ad-copy-analysis/:accountId', async (req, res) => {
   }
 });
 
-// FIXED Quality Score endpoint - replace the existing one in server.js
-
 app.get('/api/chatgpt/quality-score/:accountId', async (req, res) => {
   try {
     const { accountId } = req.params;
     
     console.log(`Quality Score analysis requested: ${accountId}`);
     
-    // 🎯 FIXED: Use the new separate quality score query template
     const qualityScoreQuery = QUERY_TEMPLATES.qualityScoreIntelligence() + '\nLIMIT 100';
-    
     const result = await executeGAQLQuery(qualityScoreQuery, accountId);
     
     if (!result.success) {
@@ -864,7 +820,6 @@ app.get('/api/chatgpt/quality-score/:accountId', async (req, res) => {
       });
     }
     
-    // Filter for valid quality score data
     const validKeywords = result.data.filter(kw => 
       kw.ad_group_criterion?.quality_info?.quality_score && 
       kw.ad_group_criterion?.quality_info?.quality_score > 0
@@ -891,11 +846,9 @@ app.get('/api/chatgpt/quality-score/:accountId', async (req, res) => {
       });
     }
     
-    // Calculate quality score metrics
     const qualityScores = validKeywords.map(kw => kw.ad_group_criterion.quality_info.quality_score);
     const avgQualityScore = qualityScores.reduce((sum, qs) => sum + qs, 0) / qualityScores.length;
     
-    // Find low quality keywords with significant spend
     const lowQualityKeywords = validKeywords
       .filter(kw => kw.ad_group_criterion.quality_info.quality_score <= 5)
       .map(kw => ({
@@ -905,14 +858,11 @@ app.get('/api/chatgpt/quality-score/:accountId', async (req, res) => {
         qualityScore: kw.ad_group_criterion.quality_info.quality_score,
         spend: ((kw.metrics?.cost_micros || 0) / 1000000).toFixed(2),
         clicks: kw.metrics?.clicks || 0,
-        conversions: kw.metrics?.conversions || 0,
-        creativeQuality: kw.ad_group_criterion.quality_info?.creative_quality_score || 'N/A',
-        landingPageQuality: kw.ad_group_criterion.quality_info?.post_click_quality_score || 'N/A'
+        conversions: kw.metrics?.conversions || 0
       }))
       .sort((a, b) => parseFloat(b.spend) - parseFloat(a.spend))
       .slice(0, 20);
 
-    // Generate smart recommendations based on data
     const recommendations = [];
     
     if (avgQualityScore < 6) {
@@ -970,6 +920,242 @@ app.get('/api/chatgpt/quality-score/:accountId', async (req, res) => {
   }
 });
 
+// ==================== FLEXIBLE ANALYSIS ENDPOINTS ====================
+
+app.post('/api/chatgpt/flexible-query', async (req, res) => {
+  try {
+    const { accountId, query, context = {} } = req.body;
+    
+    console.log(`🗣️ Natural language query: "${query}" for account ${accountId}`);
+    
+    if (!query || !accountId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Both accountId and query are required'
+      });
+    }
+
+    const queryAnalysis = await analyzeNaturalLanguageQuery(query, accountId);
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      originalQuery: query,
+      queryAnalysis: queryAnalysis
+    });
+
+  } catch (error) {
+    console.error('Error in flexible query:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message,
+      message: 'Failed to process natural language query'
+    });
+  }
+});
+
+app.post('/api/chatgpt/compare-periods', async (req, res) => {
+  try {
+    const { accountId, period1, period2, analysisType = 'campaign', campaignFilter = null } = req.body;
+    
+    console.log(`📊 Comparing periods for ${accountId}:`, period1.label, 'vs', period2.label);
+    
+    const query1 = dynamicEngine.buildDynamicQuery(
+      `${analysisType}Intelligence`, 
+      period1, 
+      campaignFilter
+    );
+    
+    const query2 = dynamicEngine.buildDynamicQuery(
+      `${analysisType}Intelligence`, 
+      period2, 
+      campaignFilter
+    );
+    
+    const [result1, result2] = await Promise.all([
+      executeGAQLQuery(query1, accountId),
+      executeGAQLQuery(query2, accountId)
+    ]);
+    
+    if (!result1.success || !result2.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'One or more queries failed',
+        details: { 
+          period1Error: result1.error, 
+          period2Error: result2.error 
+        }
+      });
+    }
+    
+    const comparison = dynamicEngine.comparePerformance(
+      result1.data, 
+      result2.data, 
+      period1.label, 
+      period2.label
+    );
+    
+    if (query1.includes('segments.date') && result1.data.length > 0) {
+      comparison.seasonalPatterns = dynamicEngine.detectSeasonalPatterns(
+        [...result1.data, ...result2.data], 
+        [period1, period2]
+      );
+    }
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      comparison: comparison
+    });
+
+  } catch (error) {
+    console.error('Error in period comparison:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
+app.get('/api/chatgpt/seasonal-analysis/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { years = [new Date().getFullYear(), new Date().getFullYear() - 1] } = req.query;
+    
+    console.log(`🌍 Seasonal analysis for ${accountId}, years: ${years.join(', ')}`);
+    
+    const seasonalData = {};
+    
+    for (const year of years) {
+      const yearQuery = dynamicEngine.buildDynamicQuery(
+        'campaignIntelligence',
+        { 
+          start: `${year}-01-01`, 
+          end: `${year}-12-31`,
+          label: `Year ${year}`
+        }
+      );
+      
+      const result = await executeGAQLQuery(yearQuery, accountId);
+      
+      if (result.success) {
+        seasonalData[year] = dynamicEngine.detectSeasonalPatterns(result.data, []);
+      }
+    }
+    
+    const insights = generateSeasonalInsights(seasonalData, years);
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      seasonalAnalysis: {
+        years: years,
+        data: seasonalData,
+        insights: insights,
+        recommendations: generateSeasonalRecommendations(seasonalData)
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in seasonal analysis:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/chatgpt/search-campaigns', async (req, res) => {
+  try {
+    const { accountId, searchTerms, dateRange, analysisType = 'performance' } = req.body;
+    
+    console.log(`🔍 Searching campaigns in ${accountId} for: ${searchTerms}`);
+    
+    const allCampaignsQuery = dynamicEngine.buildDynamicQuery(
+      'campaignIntelligence',
+      dateRange || { start: '2023-01-01', end: new Date().toISOString().split('T')[0] }
+    );
+    
+    const result = await executeGAQLQuery(allCampaignsQuery, accountId);
+    
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+    
+    const matchingCampaigns = dynamicEngine.findCampaignPatterns(searchTerms, result.data);
+    
+    const analysis = {
+      searchTerms: searchTerms,
+      totalCampaignsFound: matchingCampaigns.length,
+      matches: matchingCampaigns.slice(0, 20).map(match => ({
+        name: match.campaign.campaign?.name,
+        matchType: match.matchType,
+        relevanceScore: match.relevanceScore.toFixed(1) + '%',
+        performance: {
+          spend: ((match.campaign.metrics?.cost_micros || 0) / 1000000).toFixed(2),
+          conversions: match.campaign.metrics?.conversions || 0,
+          clicks: match.campaign.metrics?.clicks || 0,
+          roas: match.campaign.metrics?.cost_micros > 0 ? 
+            ((match.campaign.metrics?.conversions_value || 0) / ((match.campaign.metrics?.cost_micros || 1) / 1000000)).toFixed(2) : '0'
+        }
+      })),
+      insights: generateCampaignSearchInsights(matchingCampaigns, searchTerms)
+    };
+    
+    res.json({
+      success: true,
+      accountId: accountId,
+      campaignSearch: analysis
+    });
+
+  } catch (error) {
+    console.error('Error in campaign search:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/chatgpt/example-queries/:accountId', async (req, res) => {
+  const { accountId } = req.params;
+  
+  const examples = [
+    {
+      query: "Compare July 4th performance this year vs last year",
+      description: "Year-over-year holiday campaign analysis"
+    },
+    {
+      query: "Show me campaigns with 'sale' in the name from last December",
+      description: "Campaign search with specific date range"
+    },
+    {
+      query: "How did summer campaigns perform compared to winter?",
+      description: "Seasonal performance comparison"
+    },
+    {
+      query: "Find all conversion campaigns from Q1 2024",
+      description: "Campaign type and date filtering"
+    },
+    {
+      query: "Compare this month vs same month last year",
+      description: "Month-over-month year comparison"
+    },
+    {
+      query: "Show shopping campaign performance during holiday season",
+      description: "Campaign type and seasonal analysis"
+    }
+  ];
+  
+  res.json({
+    success: true,
+    accountId: accountId,
+    message: "Here are example queries you can try with the flexible analysis system:",
+    examples: examples,
+    instructions: {
+      endpoint: "POST /api/chatgpt/flexible-query",
+      body: {
+        accountId: accountId,
+        query: "Your natural language query here"
+      }
+    }
+  });
+});
+
 // ==================== ENHANCED ANALYSIS ENDPOINTS ====================
 
 app.get('/api/intelligence/impression-share/:accountId', async (req, res) => {
@@ -979,7 +1165,6 @@ app.get('/api/intelligence/impression-share/:accountId', async (req, res) => {
     
     console.log(`📊 Impression share analysis: ${accountId}`);
     
-    // 🎯 Clean query using template
     const impressionShareQuery = QUERY_TEMPLATES.impressionShareIntelligence(period);
     const result = await executeGAQLQuery(impressionShareQuery, accountId);
     
@@ -1009,7 +1194,6 @@ app.get('/api/intelligence/shopping-analysis/:accountId', async (req, res) => {
     
     console.log(`🛒 Shopping analysis: ${accountId}, period: ${period}`);
     
-    // 🎯 Clean query using template
     const shoppingQuery = QUERY_TEMPLATES.shoppingIntelligence(period);
     const result = await executeGAQLQuery(shoppingQuery, accountId);
     
@@ -1037,7 +1221,6 @@ app.get('/api/intelligence/shopping-analysis/:accountId', async (req, res) => {
       });
     }
 
-    // Analyze shopping data
     const categories = {};
     const brands = {};
     const products = {};
@@ -1048,7 +1231,6 @@ app.get('/api/intelligence/shopping-analysis/:accountId', async (req, res) => {
       const productId = row.segments?.product_item_id || 'Unknown';
       const productTitle = row.segments?.product_title || 'Unknown Product';
 
-      // Category analysis
       if (!categories[category]) {
         categories[category] = { impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0 };
       }
@@ -1058,7 +1240,6 @@ app.get('/api/intelligence/shopping-analysis/:accountId', async (req, res) => {
       categories[category].spend += (row.metrics?.cost_micros || 0) / 1000000;
       categories[category].revenue += row.metrics?.conversions_value || 0;
 
-      // Brand analysis
       if (!brands[brand]) {
         brands[brand] = { impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0 };
       }
@@ -1068,7 +1249,6 @@ app.get('/api/intelligence/shopping-analysis/:accountId', async (req, res) => {
       brands[brand].spend += (row.metrics?.cost_micros || 0) / 1000000;
       brands[brand].revenue += row.metrics?.conversions_value || 0;
 
-      // Product analysis
       if (!products[productId]) {
         products[productId] = {
           title: productTitle,
@@ -1141,7 +1321,6 @@ app.get('/api/intelligence/performance-max/:accountId', async (req, res) => {
     
     console.log(`🚀 Performance Max analysis: ${accountId}`);
     
-    // 🎯 Clean query using template
     const pMaxQuery = QUERY_TEMPLATES.performanceMaxIntelligence(period);
     const result = await executeGAQLQuery(pMaxQuery, accountId);
     
@@ -1217,7 +1396,6 @@ app.get('/api/intelligence/customer-ltv/:accountId', async (req, res) => {
     
     console.log(`💰 Customer LTV analysis: ${accountId}`);
     
-    // 🎯 Clean query using template
     const ltvQuery = QUERY_TEMPLATES.customerLifetimeValueIntelligence(period);
     const result = await executeGAQLQuery(ltvQuery, accountId);
     
@@ -1239,8 +1417,6 @@ app.get('/api/intelligence/customer-ltv/:accountId', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
-// Add this endpoint to server.js - Complete Enhanced Audit
 
 app.get('/api/intelligence/complete-audit/:accountId', async (req, res) => {
   try {
@@ -1308,99 +1484,6 @@ app.get('/api/intelligence/complete-audit/:accountId', async (req, res) => {
       auditResults.auditSections.impressionShare = { score: 0, error: 'Data unavailable' };
     }
 
-    // 3. Shopping Campaign Analysis (if applicable)
-    try {
-      const shoppingQuery = QUERY_TEMPLATES.shoppingIntelligence(period);
-      const shoppingResult = await executeGAQLQuery(shoppingQuery, accountId);
-      
-      if (shoppingResult.success && shoppingResult.data.length > 0) {
-        const totalProducts = shoppingResult.data.length;
-        const avgRoas = shoppingResult.data.reduce((sum, p) => {
-          const revenue = p.metrics?.conversions_value || 0;
-          const spend = (p.metrics?.cost_micros || 0) / 1000000;
-          return sum + (spend > 0 ? revenue / spend : 0);
-        }, 0) / totalProducts;
-        
-        auditResults.auditSections.shoppingPerformance = {
-          score: avgRoas > 4 ? 9 : avgRoas > 2 ? 7 : avgRoas > 1 ? 5 : 2,
-          totalProducts: totalProducts,
-          averageROAS: avgRoas.toFixed(2),
-          findings: [
-            avgRoas > 3 ? 'Strong shopping performance' : 'Shopping campaigns need optimization',
-            `${totalProducts} products actively advertising`
-          ]
-        };
-      } else {
-        auditResults.auditSections.shoppingPerformance = {
-          score: 0,
-          findings: ['No shopping campaigns detected']
-        };
-      }
-    } catch (error) {
-      console.log('Shopping analysis failed:', error.message);
-      auditResults.auditSections.shoppingPerformance = { score: 0, error: 'Shopping data unavailable' };
-    }
-
-    // 4. Performance Max Analysis
-    try {
-      const pMaxQuery = QUERY_TEMPLATES.performanceMaxIntelligence(period);
-      const pMaxResult = await executeGAQLQuery(pMaxQuery, accountId);
-      
-      if (pMaxResult.success && pMaxResult.data.length > 0) {
-        const campaigns = pMaxResult.data;
-        const totalSpend = campaigns.reduce((sum, c) => sum + (c.metrics?.cost_micros || 0), 0) / 1000000;
-        const totalRevenue = campaigns.reduce((sum, c) => sum + (c.metrics?.conversions_value || 0), 0);
-        const roas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
-        
-        auditResults.auditSections.performanceMax = {
-          score: roas > 4 ? 9 : roas > 2 ? 7 : roas > 1 ? 5 : 2,
-          campaignCount: campaigns.length,
-          totalSpend: totalSpend.toFixed(2),
-          roas: roas.toFixed(2),
-          findings: [
-            roas > 3 ? 'Performance Max campaigns performing well' : 'Performance Max needs optimization',
-            `${campaigns.length} Performance Max campaigns active`
-          ]
-        };
-      } else {
-        auditResults.auditSections.performanceMax = {
-          score: 0,
-          findings: ['No Performance Max campaigns detected']
-        };
-      }
-    } catch (error) {
-      console.log('Performance Max analysis failed:', error.message);
-      auditResults.auditSections.performanceMax = { score: 0, error: 'Performance Max data unavailable' };
-    }
-
-    // 5. Customer LTV Analysis
-    try {
-      const ltvQuery = QUERY_TEMPLATES.customerLifetimeValueIntelligence(period);
-      const ltvResult = await executeGAQLQuery(ltvQuery, accountId);
-      
-      if (ltvResult.success && ltvResult.data.length > 0) {
-        const ltvAnalysis = GoogleAdsIntelligenceEngine.analyzeNewCustomerLTV(ltvResult.data);
-        
-        const newCustomerROAS = parseFloat(ltvAnalysis.newCustomers.roas);
-        const returningROAS = parseFloat(ltvAnalysis.returningCustomers.roas);
-        
-        auditResults.auditSections.customerLTV = {
-          score: (newCustomerROAS + returningROAS) / 2 > 3 ? 8 : (newCustomerROAS + returningROAS) / 2 > 2 ? 6 : 3,
-          newCustomerROAS: ltvAnalysis.newCustomers.roas,
-          returningCustomerROAS: ltvAnalysis.returningCustomers.roas,
-          newCustomerValue: ltvAnalysis.newCustomers.avgOrderValue,
-          returningCustomerValue: ltvAnalysis.returningCustomers.avgOrderValue,
-          findings: [
-            newCustomerROAS > returningROAS ? 'Strong new customer acquisition' : 'Focus on retaining existing customers',
-            `New customer ROAS: ${ltvAnalysis.newCustomers.roas}, Returning: ${ltvAnalysis.returningCustomers.roas}`
-          ]
-        };
-      }
-    } catch (error) {
-      console.log('Customer LTV analysis failed:', error.message);
-      auditResults.auditSections.customerLTV = { score: 0, error: 'Customer LTV data unavailable' };
-    }
-
     // Calculate Overall Score
     const sections = Object.values(auditResults.auditSections).filter(section => section.score !== undefined);
     auditResults.overallScore = sections.length > 0 
@@ -1425,15 +1508,6 @@ app.get('/api/intelligence/complete-audit/:accountId', async (req, res) => {
         area: 'Market Share',
         issue: 'Missing impression share opportunities',
         action: 'Increase budgets or improve Quality Score to capture more traffic'
-      });
-    }
-
-    if (auditResults.auditSections.shoppingPerformance?.score < 5 && auditResults.auditSections.shoppingPerformance?.score > 0) {
-      auditResults.priorityRecommendations.push({
-        priority: 'HIGH',
-        area: 'Shopping Campaigns',
-        issue: 'Poor shopping campaign ROAS',
-        action: 'Review product feed quality and bidding strategy'
       });
     }
 
@@ -1505,13 +1579,11 @@ app.get('/api/chatgpt/smart-analysis/:accountId', async (req, res) => {
     
     console.log(`🧠 Smart AI analysis requested: ${accountId}`);
     
-    // Get regular analysis using clean template
     const regularAnalysis = await executeGAQLQuery(
       QUERY_TEMPLATES.campaignIntelligence(period), 
       accountId
     );
     
-    // Get AI insights
     const aiInsights = aiMemory.getInsights(accountId);
     
     const smartRecommendations = [];
@@ -1612,10 +1684,331 @@ app.get('/api/ai/learning-dashboard', async (req, res) => {
   }
 });
 
+// ==================== FLEXIBLE ANALYSIS HELPER FUNCTIONS ====================
+
+async function analyzeNaturalLanguageQuery(query, accountId) {
+  const analysis = {
+    intent: detectQueryIntent(query),
+    dateRanges: dynamicEngine.parseDateRequest(query),
+    campaignFilters: extractCampaignFilters(query),
+    analysisType: detectAnalysisType(query),
+    response: {}
+  };
+
+  try {
+    switch (analysis.intent) {
+      case 'comparison':
+        if (analysis.dateRanges.type === 'comparison') {
+          const comparisonData = await executeComparison(
+            accountId, 
+            analysis.dateRanges.primary, 
+            analysis.dateRanges.comparison,
+            analysis.analysisType,
+            analysis.campaignFilters
+          );
+          analysis.response = formatComparisonResponse(comparisonData, query);
+        }
+        break;
+        
+      case 'seasonal':
+        const seasonalData = await executeSeasonalAnalysis(accountId, analysis.dateRanges);
+        analysis.response = formatSeasonalResponse(seasonalData, query);
+        break;
+        
+      case 'campaign_search':
+        const searchData = await executeCampaignSearch(accountId, analysis.campaignFilters, analysis.dateRanges.primary);
+        analysis.response = formatSearchResponse(searchData, query);
+        break;
+        
+      default:
+        const singleData = await executeSinglePeriodAnalysis(accountId, analysis.dateRanges.primary, analysis.analysisType);
+        analysis.response = formatSinglePeriodResponse(singleData, query);
+    }
+  } catch (error) {
+    analysis.response = {
+      message: `I couldn't fully analyze "${query}" due to: ${error.message}`,
+      suggestion: "Try asking about campaign performance, date comparisons, or seasonal trends."
+    };
+  }
+
+  return analysis;
+}
+
+function detectQueryIntent(query) {
+  const patterns = {
+    comparison: /(?:vs|versus|compare|compared to|against)/i,
+    seasonal: /(?:seasonal|summer|winter|spring|fall|autumn|holiday)/i,
+    campaign_search: /(?:campaigns? with|find campaigns|campaigns containing|campaigns like)/i,
+    trend: /(?:trend|over time|pattern|growth)/i
+  };
+
+  for (const [intent, pattern] of Object.entries(patterns)) {
+    if (pattern.test(query)) return intent;
+  }
+  
+  return 'single_period';
+}
+
+function extractCampaignFilters(query) {
+  const filters = [];
+  
+  const quotedMatches = query.match(/"([^"]+)"/g);
+  if (quotedMatches) {
+    filters.push(...quotedMatches.map(match => match.slice(1, -1)));
+  }
+  
+  const keywordPatterns = [
+    /campaigns? (?:with|containing|including) (\w+)/i,
+    /(\w+) campaigns?/i
+  ];
+  
+  keywordPatterns.forEach(pattern => {
+    const match = query.match(pattern);
+    if (match) filters.push(match[1]);
+  });
+  
+  return [...new Set(filters)];
+}
+
+function detectAnalysisType(query) {
+  if (/keyword|search term/i.test(query)) return 'keyword';
+  if (/ad copy|ads|creative/i.test(query)) return 'ad';
+  if (/shopping|product/i.test(query)) return 'shopping';
+  if (/impression share|market share/i.test(query)) return 'impressionShare';
+  return 'campaign';
+}
+
+async function executeComparison(accountId, period1, period2, analysisType, campaignFilters) {
+  try {
+    const query1 = dynamicEngine.buildDynamicQuery(`${analysisType}Intelligence`, period1, campaignFilters[0]);
+    const query2 = dynamicEngine.buildDynamicQuery(`${analysisType}Intelligence`, period2, campaignFilters[0]);
+    
+    const [result1, result2] = await Promise.all([
+      executeGAQLQuery(query1, accountId),
+      executeGAQLQuery(query2, accountId)
+    ]);
+    
+    if (!result1.success || !result2.success) {
+      throw new Error('Failed to fetch comparison data');
+    }
+    
+    return dynamicEngine.comparePerformance(result1.data, result2.data, period1.label, period2.label);
+  } catch (error) {
+    throw new Error(`Comparison failed: ${error.message}`);
+  }
+}
+
+async function executeSeasonalAnalysis(accountId, dateRanges) {
+  try {
+    const query = dynamicEngine.buildDynamicQuery('campaignIntelligence', dateRanges.primary);
+    const result = await executeGAQLQuery(query, accountId);
+    
+    if (!result.success) {
+      throw new Error('Failed to fetch seasonal data');
+    }
+    
+    return dynamicEngine.detectSeasonalPatterns(result.data, [dateRanges.primary]);
+  } catch (error) {
+    throw new Error(`Seasonal analysis failed: ${error.message}`);
+  }
+}
+
+async function executeCampaignSearch(accountId, campaignFilters, dateRange) {
+  try {
+    const query = dynamicEngine.buildDynamicQuery('campaignIntelligence', dateRange);
+    const result = await executeGAQLQuery(query, accountId);
+    
+    if (!result.success) {
+      throw new Error('Failed to search campaigns');
+    }
+    
+    const searchTerm = campaignFilters.join(' ');
+    const matches = dynamicEngine.findCampaignPatterns(searchTerm, result.data);
+    
+    return {
+      matches: matches,
+      totalCampaignsFound: matches.length,
+      insights: generateCampaignSearchInsights(matches, searchTerm)
+    };
+  } catch (error) {
+    throw new Error(`Campaign search failed: ${error.message}`);
+  }
+}
+
+async function executeSinglePeriodAnalysis(accountId, dateRange, analysisType) {
+  try {
+    const query = dynamicEngine.buildDynamicQuery(`${analysisType}Intelligence`, dateRange);
+    const result = await executeGAQLQuery(query, accountId);
+    
+    if (!result.success) {
+      throw new Error('Failed to analyze period');
+    }
+    
+    const metrics = dynamicEngine.calculatePeriodMetrics(result.data, dateRange.label);
+    
+    return {
+      period: dateRange.label,
+      metrics: metrics,
+      campaigns: result.data.length
+    };
+  } catch (error) {
+    throw new Error(`Single period analysis failed: ${error.message}`);
+  }
+}
+
+function formatComparisonResponse(comparisonData, originalQuery) {
+  const { period1, period2, changes, insights } = comparisonData;
+  
+  let response = {
+    summary: `Comparing ${period1.label} vs ${period2.label}`,
+    keyFindings: [],
+    recommendations: [],
+    data: { period1, period2, changes }
+  };
+
+  if (changes.conversions?.direction === 'increase') {
+    response.keyFindings.push(
+      `🎯 Great news! Conversions increased by ${changes.conversions.percentage} (${period2.conversions} → ${period1.conversions})`
+    );
+  } else if (changes.conversions?.direction === 'decrease') {
+    response.keyFindings.push(
+      `⚠️ Conversions dropped by ${Math.abs(parseFloat(changes.conversions.percentage))}% (${period2.conversions} → ${period1.conversions})`
+    );
+  }
+
+  if (changes.spend?.direction === 'decrease' && changes.conversions?.direction === 'increase') {
+    response.keyFindings.push(
+      `💰 Excellent efficiency! Spent ${Math.abs(parseFloat(changes.spend.percentage))}% less but got more conversions`
+    );
+  }
+
+  const roas1 = parseFloat(period1.roas);
+  const roas2 = parseFloat(period2.roas);
+  if (roas1 > roas2) {
+    const improvement = (roas1 - roas2).toFixed(2);
+    response.keyFindings.push(`📈 ROAS improved by ${improvement} (${period2.roas} → ${period1.roas})`);
+  }
+
+  if (changes.conversions?.direction === 'decrease') {
+    response.recommendations.push("Investigate what changed between periods - landing pages, ad copy, or external factors");
+  }
+  
+  if (parseFloat(changes.spend?.percentage || 0) > 20) {
+    response.recommendations.push("Significant spend difference detected - ensure budget changes were intentional");
+  }
+
+  return response;
+}
+
+function formatSeasonalResponse(seasonalData, originalQuery) {
+  return {
+    summary: "Seasonal performance patterns identified",
+    patterns: seasonalData.seasonal || {},
+    insights: [
+      "Seasonal trends can help optimize budget allocation",
+      "Consider ramping up successful seasonal campaigns earlier",
+      "Monitor competitor activity during peak seasons"
+    ],
+    data: seasonalData
+  };
+}
+
+function formatSearchResponse(searchData, originalQuery) {
+  const { matches, totalCampaignsFound } = searchData;
+  
+  return {
+    summary: `Found ${totalCampaignsFound} campaigns matching your search`,
+    topMatches: matches.slice(0, 5),
+    insights: searchData.insights,
+    recommendations: totalCampaignsFound > 0 ? [
+      "Review top-performing matches for successful patterns",
+      "Consider scaling campaigns with high ROAS",
+      "Test similar messaging in new campaigns"
+    ] : [
+      "No exact matches found - try broader search terms",
+      "Consider creating campaigns for this theme if it's important",
+      "Check historical data for similar campaign patterns"
+    ]
+  };
+}
+
+function formatSinglePeriodResponse(data, originalQuery) {
+  const metrics = data.metrics || {};
+  
+  return {
+    summary: `Analysis for ${data.period || 'specified period'}`,
+    performance: {
+      totalSpend: metrics.spend || '0',
+      conversions: metrics.conversions || 0,
+      roas: metrics.roas || '0',
+      campaigns: metrics.campaigns || 0
+    },
+    insights: [
+      metrics.roas > 3 ? "Strong ROAS performance" : "ROAS could be improved",
+      metrics.conversions > 100 ? "Good conversion volume" : "Consider scaling successful campaigns"
+    ]
+  };
+}
+
+function generateSeasonalInsights(seasonalData, years) {
+  const insights = [];
+  
+  if (years.length > 1) {
+    const currentYear = Math.max(...years);
+    const previousYear = currentYear - 1;
+    
+    if (seasonalData[currentYear] && seasonalData[previousYear]) {
+      insights.push({
+        type: 'year_over_year',
+        message: `Comparing ${currentYear} vs ${previousYear} seasonal patterns`,
+        data: seasonalData
+      });
+    }
+  }
+  
+  return insights;
+}
+
+function generateSeasonalRecommendations(seasonalData) {
+  return [
+    "Identify your strongest performing seasons and increase budget allocation",
+    "Prepare seasonal campaigns 6-8 weeks in advance",
+    "Test different creative messaging for each season",
+    "Monitor competitor activity during peak seasons"
+  ];
+}
+
+function generateCampaignSearchInsights(matches, searchTerms) {
+  const insights = [];
+  
+  if (matches.length === 0) {
+    insights.push(`No campaigns found matching "${searchTerms}"`);
+  } else {
+    const avgROAS = matches.reduce((sum, m) => {
+      const revenue = m.campaign.metrics?.conversions_value || 0;
+      const spend = (m.campaign.metrics?.cost_micros || 0) / 1000000;
+      return sum + (spend > 0 ? revenue / spend : 0);
+    }, 0) / matches.length;
+    
+    insights.push(`Found ${matches.length} campaigns with average ROAS of ${avgROAS.toFixed(2)}`);
+    
+    if (avgROAS > 3) {
+      insights.push("These campaigns show strong ROAS - consider scaling similar strategies");
+    }
+  }
+  
+  return insights;
+}
+
 // ==================== START SERVER ====================
 app.listen(PORT, () => {
-  console.log(`🚀 Agency Google Ads API Server running on port ${PORT} (REFACTORED!)`);
+  console.log(`🚀 Agency Google Ads API Server running on port ${PORT}`);
   console.log(`🔗 API Documentation: http://localhost:${PORT}/api/test`);
   console.log(`📊 Available Queries: ${Object.keys(QUERY_TEMPLATES).join(', ')}`);
-  console.log(`🎯 Ready to analyze multiple client accounts with clean, maintainable code!`);
+  console.log(`🎯 FLEXIBLE ANALYSIS SYSTEM READY!`);
+  console.log(`🗣️ Natural Language Queries: POST /api/chatgpt/flexible-query`);
+  console.log(`📊 Period Comparisons: POST /api/chatgpt/compare-periods`);
+  console.log(`🌍 Seasonal Analysis: GET /api/chatgpt/seasonal-analysis/:accountId`);
+  console.log(`🔍 Campaign Search: POST /api/chatgpt/search-campaigns`);
+  console.log(`💡 Example Queries: GET /api/chatgpt/example-queries/:accountId`);
 });
